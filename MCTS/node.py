@@ -6,14 +6,14 @@ A class used to define nodes in the Monte Carlo tree, including methods
 used for node expansion, selection and playouts
 '''
 class Node:
-    def __init__(self, action=None, parent=None, player=None, team=None):
-        self.action = action    # None if root state
+    def __init__(self, state, parent=None, player=-1, team=None):
         self.parent = parent    # None if root state
         self.reward = 0         # MCTS reward during backpropagation
         self.visits = 0         # MCTS visits during backpropagation
         self.avails = 0         # Number of times parent has been visited during backpropagation
         self.player = player    # Player id; None if environmental state
-        self.team = team        # SPY or RESISTANCE; None if environmental state
+        self.team = team        # SPY or NON-SPY; None if environmental state
+        self.state = state      # Gamestate that the node represents
         self.child_nodes = []
 
 
@@ -27,8 +27,8 @@ class Node:
         return max(legal_children, ucb_eq)
 
 
-    def append_child(self, action, player):
-        child_node = Node(action=action, parent=self, player=player)
+    def append_child(self, state, player):
+        child_node = Node(state=state, parent=self, player=player)
         self.child_nodes.append(child_node)
         return child_node
 
