@@ -54,19 +54,19 @@ class ResistanceState():
         if self.gamestate == Gamestates.SELECTION:
             mission_size = Agent.mission_sizes[num_players][self.rnd - 1]
             possible_missions = combinations(range(num_players), mission_size)  
-            actions = [{'type': Gamestates.SELECTION, 'action': mission} for mission in list(possible_missions)]
+            actions = [{'type': Gamestates.SELECTION, 'action': mission} for mission in possible_missions]
             
         elif self.gamestate == Gamestates.VOTING:
             voting_combinations = product([False, True], repeat=num_players)
-            actions = [{'type': Gamestates.VOTING, 'action': votes} for votes in list(voting_combinations)]
+            actions = [{'type': Gamestates.VOTING, 'action': votes} for votes in voting_combinations]
 
         elif self.gamestate == Gamestates.MISSION:
             spies = [p for p in range(num_players) if self.determination[p]]
             spies_in_mission = [p for p in self.mission if p in spies]
             if spies_in_mission:
-                possible_actions = product((True, False), repeat=spies_in_mission)
-                sabotage_combinations = [dict(zip(spies_in_mission, sabotages)) for sabotages in possible_actions]
-                actions = [{'type': Gamestates.MISSION, 'action': sabotages} for sabotages in list(sabotage_combinations)]
+                sabotage_combinations = product((False, True), repeat=spies_in_mission)
+                sabotage_combinations = [list(zip(spies_in_mission, sabotages)) for sabotages in sabotage_combinations]
+                actions = [{'type': Gamestates.MISSION, 'action': sabotages} for sabotages in sabotage_combinations]
             else:
                 actions = [{'type': Gamestates.MISSION, 'action': None}]
 
@@ -74,7 +74,7 @@ class ResistanceState():
 
     
     # Changes the game state object into a new state s' where s' = s(move)
-    def do_move(self, move):
+    def make_move(self, move):
         num_players = len(self.determination)
 
         if move['type'] == Gamestates.SELECTION:
@@ -124,6 +124,8 @@ class ResistanceState():
             score = self.rnd - self.missions_succeeded
         else:
             score = self.missions_succeeded
+        if score < 3:
+            score = 0
         return score / 3        # reward => [0, 5/3] 
 
 
