@@ -1,0 +1,26 @@
+{
+    "this_proposer":{
+        "fail_required":{
+            "num_mission_fail":{
+                "leaf_a":true,
+                "leaf_b":true,
+                "rejected_votes":{
+                    "leaf_a":true,
+                    "leaf_b":true
+                }
+            },
+            "mission":{
+                "leaf_a":true,
+                "leaf_b":true
+            }
+        },
+        "num_mission_success":{
+            "leaf_a":true,
+            "leaf_b":true,
+            "next_proposer":{
+                "leaf_a":true,
+                "leaf_b":true
+            }
+        }
+    }
+}
