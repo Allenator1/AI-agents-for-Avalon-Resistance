@@ -1,6 +1,5 @@
 from agent import Agent
-from math import comb
-from itertools import combinations, product
+from itertools import combinations, count, product
 
 
 class Roles():
@@ -58,14 +57,14 @@ class ResistanceState():
             
         elif self.gamestate == Gamestates.VOTING:
             voting_combinations = product([False, True], repeat=num_players)
-            actions = [{'type': Gamestates.VOTING, 'action': votes} for votes in voting_combinations]
+            actions = [{'type': Gamestates.VOTING, 'action': enumerate(votes)} for votes in voting_combinations]
 
         elif self.gamestate == Gamestates.MISSION:
             spies = [p for p in range(num_players) if self.determination[p]]
             spies_in_mission = [p for p in self.mission if p in spies]
             if spies_in_mission:
                 sabotage_combinations = product((False, True), repeat=spies_in_mission)
-                sabotage_combinations = [list(zip(spies_in_mission, sabotages)) for sabotages in sabotage_combinations]
+                sabotage_combinations = [zip(spies_in_mission, sabotages) for sabotages in sabotage_combinations]
                 actions = [{'type': Gamestates.MISSION, 'action': sabotages} for sabotages in sabotage_combinations]
             else:
                 actions = [{'type': Gamestates.MISSION, 'action': None}]
@@ -83,7 +82,8 @@ class ResistanceState():
             self.player = -1    # Environmental player
 
         elif move['type'] == Gamestates.VOTING:
-            votes = move['action']
+            player_votes = move['action']
+            votes = [vote for _, vote in player_votes]
             num_votes_for = sum(votes)
             if num_votes_for * 2 > len(votes):
                 self.gamestate = Gamestates.MISSION
@@ -113,9 +113,9 @@ class ResistanceState():
                 self.gamestate = Gamestates.SELECTION
 
         
-        def __repr__(self):
-            return f'STATE:{self.gamestate} rnd/successes/fails: ' + \
-                f'{self.rnd}/{self.missions_succeeded}/{self.rnd - self.missions_succeeded}'
+    def __repr__(self):
+        return f'STATE:{self.gamestate} rnd/successes/fails: ' + \
+            f'{self.rnd}/{self.missions_succeeded}/{self.rnd - self.missions_succeeded}'
 
 
     # Returns the reward for a player based on the current determination stored in the state
@@ -127,13 +127,3 @@ class ResistanceState():
         if score < 3:
             score = 0
         return score / 3        # reward => [0, 5/3] 
-
-
-def initialise_information_sets(player, num_players):
-    num_spies = Agent.spy_count[num_players]
-    possible_spies = filter(lambda p: p != player, range(num_players))
-    spy_configurations = combinations(possible_spies, num_spies)
-    information_sets = {}
-    for spies in spy_configurations:
-        information_sets['team'] = [True if i in spies else False for i in range(num_players)]
-        information_sets['probability'] = 1 / comb(num_players - 1, num_spies)          # Equal probability to choose a determination
