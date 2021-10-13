@@ -56,7 +56,6 @@ tree2 = {
 x = a.generate_child_tree(tree1,tree2,0.0,[])
 pprint.pprint(x)
 
-
 # def mutate_tree(tree,mutate_rate):
 #     for key in tree:
 #         if random.random()<mutate_rate and type(tree[key])!= dict:

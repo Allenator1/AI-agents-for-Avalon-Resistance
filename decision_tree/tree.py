@@ -1,5 +1,7 @@
 import json
 import random
+
+from numpy.lib.function_base import select
 from model import States
 import numpy as np
 import pprint
@@ -203,24 +205,38 @@ class Tree():
     #this algorithm reproduces a new decision tree by replacing a subtree of tree_a with a subtree of tree_b
     #select rate determines the chance of at which deepth the replace will take place
     def generate_child_tree(self,tree_a:dict, tree_b:dict, select_rate, existing_node:list):
+        have_child = False
+        for key in tree_a:
+            if type(tree_a[key]) == dict:
+                have_child = True
+        if not have_child:
+            select_rate = 1
         for key in tree_a:
             #keep searching
             if random.random() > select_rate:
                 if type(tree_a[key]) == dict:
                     seen = [param for param in tree_a if type(tree_a[key]) == dict]
                     seen = list(np.append(seen,existing_node))
-                    connect = self.generate_child_tree(tree_a[key],tree_b,select_rate+0.3,seen)
-                    if connect != None:
+                    if type(tree_a[key]) != dict:
+                        continue
+                    if select_rate<1:
+                        select_rate += 0.3
+                    connect = self.generate_child_tree(tree_a[key],tree_b,select_rate,seen)
+                    if connect != None and len(connect) == self.num_of_branch[key]:
                         tree_a[key] = connect
                         return tree_a     
             #try replace this one
             else:
                 return self.node_trace_back(existing_node,tree_b)
+        
     
     #once the location of concatination is determined, search for a muturaly exclusive subtree from tree_b
     def node_trace_back(self,existing,tree_b)->dict:
         for key in tree_b:
-            node_below = self.examine_nodes(tree_b[key],[])
+            if type(tree_b[key]) == dict:
+                node_below = self.examine_nodes(tree_b[key],[])
+            else:
+                continue
             intersection = np.intersect1d(node_below,existing)
             #keep searching
             if intersection.size != 0:
@@ -229,7 +245,7 @@ class Tree():
             #concatnate this part of the tree
             else:
                 return tree_b[key]
-        return None
+        return tree_b
         
     #return all key of nodes below the start node of a decision tree
     def examine_nodes(self,start_node,examined:list) -> list:
