@@ -191,14 +191,15 @@ def generate_mutated_generation(winner,num):
     
 def check_difference():
     trained,initial = train()
-    trained.extend(initial)
+    test = copy.deepcopy(trained)
+    test.extend(initial)
     #trained : 0,1 // initial 2,3// rest are random
     score_of_each_tree = [0]*7
     for i in range(40):
-        winner,winning_tree = test_game(trained)
+        winner,winning_tree = test_game(test)
         for i in winning_tree:
             score_of_each_tree[i]+=1
-    return score_of_each_tree
+    return score_of_each_tree,trained
     
 
 def test_game(trees):
@@ -239,12 +240,47 @@ def test_game(trees):
         winner = "RESISTANCE"
     return winner,winning_trees
 
-
+#
 def check_converge():
     total = 0
+    current_best_score = 0
+    converged_tree = None
+    converge = 0
     for i in range(20):
-        score = check_difference()
-        total = score[0]+score[1] - score[2] - score[3]
-    print(total)
+        score,trained = check_difference()
+        total = score[0] + score[1] - score[2] - score[3]
+        print("trained tree win {} more games than random decision tree".format(total))
+        if total > 0:
+            converge += 1
+        if total > 0:
+            for i in range(2):
+                if score[i] > current_best_score:
+                    current_best_score = score[i]
+                    converged_tree = trained[i]
+    tree_dict = {
+        'PROPOSE':converged_tree[0],
+        'VOTE':converged_tree[1],
+        'BETRAY':converged_tree[2]
+    }
+    print("tree converged: {}/20 times".format(converge))
+    return converge, current_best_score, tree_dict
 
-check_converge()
+
+def generate_end_tree():
+    total_converge = 0
+    high_score = 0
+    final_tree = None
+    for i in range(10):
+        converge, score, tree = check_converge()
+        if score > high_score:
+            final_tree = tree
+            high_score = score
+        total_converge += converge
+    average_converge = total_converge/10
+    print("tree converged: {}/20 times on average".format(average_converge))
+    print("the best tree generated: ")
+    print("|-------------------------------------------------------------------------------------------------")
+    print(final_tree)
+    print("|-------------------------------------------------------------------------------------------------")
+
+generate_end_tree()

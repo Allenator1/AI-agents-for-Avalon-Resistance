@@ -9,16 +9,17 @@ import os
 import pprint
 
 
-class MyAgent(Agent):        
+class DecisionTreeAgent(Agent):        
     '''A sample implementation of a random agent in the game The Resistance'''
 
-    def __init__(self, name='Rando',tree=None):
+    def __init__(self, name='a'):
         '''
         Initialises the agent.
         Nothing to do here.
         '''
         self.name = name
-        self.thistree = tree
+        self.pretrained = {'PROPOSE': {'num_mission_fail': {'next_proposer': {'num_mission_success': {'rejected_votes': {'option_2': 'enough_spy_exposed', 'option_1': 'enough_spy_exposed'}, 'option_2': 'enough_spy_not_exposed', 'option_1': 'enough_spy_not_exposed'}, 'fail_required': {'this_proposer': {'option_2': 'enough_spy_exposed', 'option_1': 'enough_spy_exposed'}, 'option_1': 'no_spy'}}, 'option_2': 'no_spy', 'option_1': 'enough_spy_not_exposed'}}, 'VOTE': {'mission': {'this_proposer': {'next_proposer': {'option_2': True, 'option_1': False}, 'option_1': False}, 'rejected_votes': {'fail_required': {'num_mission_fail': {'option_3': False, 'num_mission_success': {'option_3': True, 'option_2': False, 'option_1': False}, 'option_1': True}, 'option_1': False}, 'option_1': True}}}, 'BETRAY': {'mission': {'num_mission_success': {'this_proposer': {'option_2': True, 'option_1': True}, 'fail_required': {'next_proposer': {'option_2': True, 'num_mission_fail': {'option_3': False, 'rejected_votes': {'option_2': False, 'option_1': False}, 'option_1': True}}, 'option_1': True}, 'option_1': True}, 'option_1': True}}}
+        self.thistree = [self.pretrained['PROPOSE'],self.pretrained['VOTE'],self.pretrained['BETRAY']]
 
     def new_game(self, number_of_players, player_number, spy_list):
         '''

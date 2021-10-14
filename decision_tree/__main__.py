@@ -1,8 +1,9 @@
 from random_agent import RandomAgent
 from game import Game
 from myagent import MyAgent
+from decision_tree_agent import DecisionTreeAgent
 
-agents = [MyAgent(name='me'), 
+agents = [DecisionTreeAgent(name='me'), 
         RandomAgent(name='r2'),  
         RandomAgent(name='r3'),  
         RandomAgent(name='r4'),  
