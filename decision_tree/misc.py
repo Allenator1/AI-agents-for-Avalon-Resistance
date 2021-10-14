@@ -12,7 +12,7 @@ try:
     to_unicode = unicode
 except NameError:
     to_unicode = str
-# tree1 = {
+# tree1 = { 
 #     'fail_required': {
 #         '2sdf': False,
 #         'num_mission_fail': {
@@ -29,7 +29,6 @@ except NameError:
 #         }
 #     }
 # }
-
 
 # tree2 = {
 #         'this_proposer':{
