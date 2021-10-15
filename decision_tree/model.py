@@ -42,12 +42,14 @@ class States():
         if a player proposed a successufull mission
         '''
         self.expose = [0.5] * num_player
-        #set of values indicates the trust value towards a certain player
-        #if a player voted for a failed mission
-        #if a player participated in a failed mission
-        #if a player down voted a failed mission
-        #if a player proposed a failed mission
-        #if a player proposed a successufull mission
+        '''
+        set of values indicates the trust value towards a certain player
+        if a player voted for a failed mission
+        if a player participated in a failed mission
+        if a player down voted a failed mission
+        if a player proposed a failed mission
+        if a player proposed a successufull mission
+        '''
         self.distrust = [0.5] * num_player
         #current stage
         self.stage = None

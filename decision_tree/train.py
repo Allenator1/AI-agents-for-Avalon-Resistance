@@ -114,7 +114,6 @@ def play_game(trees):
 
     game = Game(agents)
     game.play()
-    #print(game)
     agents = game.agents
     spies = game.spies
     resistance = [i for i in range(len(agents)) if i not in spies ]
