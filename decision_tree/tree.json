@@ -1,0 +1,77 @@
+{
+    "BETRAY": {
+        "mission": {
+            "num_mission_success": {
+                "fail_required": {
+                    "next_proposer": {
+                        "num_mission_fail": {
+                            "option_1": true,
+                            "option_3": false,
+                            "rejected_votes": {
+                                "option_1": false,
+                                "option_2": false
+                            }
+                        },
+                        "option_2": true
+                    },
+                    "option_1": true
+                },
+                "option_1": true,
+                "this_proposer": {
+                    "option_1": true,
+                    "option_2": true
+                }
+            },
+            "option_1": true
+        }
+    },
+    "PROPOSE": {
+        "num_mission_fail": {
+            "next_proposer": {
+                "fail_required": {
+                    "option_1": "no_spy",
+                    "this_proposer": {
+                        "option_1": "enough_spy_exposed",
+                        "option_2": "enough_spy_exposed"
+                    }
+                },
+                "num_mission_success": {
+                    "option_1": "enough_spy_not_exposed",
+                    "option_2": "enough_spy_not_exposed",
+                    "rejected_votes": {
+                        "option_1": "enough_spy_exposed",
+                        "option_2": "enough_spy_exposed"
+                    }
+                }
+            },
+            "option_1": "enough_spy_not_exposed",
+            "option_2": "no_spy"
+        }
+    },
+    "VOTE": {
+        "mission": {
+            "rejected_votes": {
+                "fail_required": {
+                    "num_mission_fail": {
+                        "num_mission_success": {
+                            "option_1": false,
+                            "option_2": false,
+                            "option_3": true
+                        },
+                        "option_1": true,
+                        "option_3": false
+                    },
+                    "option_1": false
+                },
+                "option_1": true
+            },
+            "this_proposer": {
+                "next_proposer": {
+                    "option_1": false,
+                    "option_2": true
+                },
+                "option_1": false
+            }
+        }
+    }
+}
