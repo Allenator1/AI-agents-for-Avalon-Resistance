@@ -10,7 +10,7 @@ import copy
 
 def train():
     num_player = 7
-    total_rounds = 10 #should be able to be divided by 10
+    total_rounds = 10 
     total_set = num_player*2
     winner = []
     initial = []
@@ -43,7 +43,7 @@ def train():
         total_set.extend(next_gen)
         next_mutate = generate_mutated_generation(winner,exploit_explore[iteration][3])
         total_set.extend(next_mutate)
-        train_game_per_round = 30
+        train_game_per_round = 35
         score_of_each_tree = [0]*14
         if i == 0:
             initial =  random.choices(total_set,  k = 2)
@@ -270,13 +270,14 @@ def generate_end_tree():
     total_converge = 0
     high_score = 0
     final_tree = None
-    for i in range(10):
+    rnds = 10
+    for i in range(rnds):
         converge, score, tree = check_converge()
         if score > high_score:
             final_tree = tree
             high_score = score
         total_converge += converge
-    average_converge = total_converge/10
+    average_converge = total_converge/rnds
     print("tree converged: {}/20 times on average".format(average_converge))
     print("the best tree generated: ")
     print("|-------------------------------------------------------------------------------------------------")
