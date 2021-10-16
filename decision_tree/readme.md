@@ -97,3 +97,20 @@ tree.py                                  ---tree_representation---
     - samples form the winning generation and initial generation are returned
 - ***play_game***
     - Self-play between 7 agents 
+- ***generate_random_trees***
+    - return a list of random decision trees with length specified by num
+- ***generate_next_generation***
+    - return a list of offsping decision trees with the given parents with length specified by num
+- ***generate_mutated_generation***
+    - return a list of mutated decision trees with the given parents with length specified by num
+- ***check_difference***
+    - Samples two winner and two initial random decision tree
+    - plays a finite number of test games and return the score of each tree 
+- ***test_game***
+    - Plays a game with two survivor, two random decision tree and three random agents 
+- ***check_converge***
+    - Runs finite iterations of check difference and sums the total score of survivor and random decision trees(as negative) at each iteration
+    - If the score turn out positive, then that particular iteration of training is concidered converging and successful 
+- ***generate_end_tree***
+    - Runs finite iterations of check converge and calculates the average converge rate
+    - returns the best tree encountered in all iterations
