@@ -11,11 +11,11 @@ class PlayerTree:
 
 '''
 A class used to define nodes in the Monte Carlo tree, including methods
-used for node expansion, selection and playouts.
+used for node expansion, selection and backpropagation.
 '''
 class Node:
     def __init__(self, player, game_state, parent=None, action=None):     
-        self.player = player                # Player id for the player that this node belongs to. -1 for terminal node
+        self.player = player                # Player id for the player that this node belongs to
         self.game_state = game_state        # Representation of the game
         self.parent = parent                # None if root state
         self.action = action                # Action that parent took to lead to this node. None if root state.
@@ -46,7 +46,8 @@ class Node:
             return node
 
 
-    def append_child(self, next_player, action):
+    def append_child(self, game_state, action):
+        next_player = game_state.player
         if type(next_player) == list:
             child_node = SimultaneousMoveNode(player=next_player, parent=self, action=action)
         else:
@@ -66,17 +67,39 @@ class Node:
 
 
     def __eq__(self, other):
-        return self.game_state == other.game_state                                                                   
+        return self.game_state == other.game_state   
 
 
 '''
-A class used to define nodes in the Monte Carlo tree, where the game state
-contains simultaneous actions. Uses Decoupled UCT Selection (DUCT) to choose a
-child node during the selection phase.
+A class used to define nodes in the Monte Carlo tree, where there is no opportunity for any player to gain a reward. 
+This includes TERMINAL states and SABOTAGE states, in the perspective of a non-saboteur. Such nodes are 
+merely filler nodes to store information about successive and preceding nodes in a player tree.
+'''
+class EnvironmentalNode(Node):
+    def __init__(self, game_state, parent=None, action=None):
+        self.player = -1
+        self.game_state = game_state
+        self.parent = parent
+        self.action = action                                                          
+        self.visits = 0
+        self.determination_visits = {}
+        self.children = {}
+
+
+    def backpropagate(self, terminal_state, child_node):
+        self.determination_visits[terminal_state.determination] += 1
+        self.visits += 1
+
+
+'''
+A class used to define nodes in the Monte Carlo tree, where the game state contains simultaneous actions
+- i.e., when players are unable to observe the actions of other actors until all actions have been performed.
+The selection process uses Decoupled UCT Selection (DUCT) to choose a child node. DUCT performs UCT independently
+over each player's possible actions and constructs an optimal 'joint action', through which a child node is chosen.
 '''
 class SimultaneousMoveNode(Node):
     def __init__(self, player, game_state, parent=None, action=None):
-        self.player = player                # player = -1 if TERMINAL node
+        self.player = player                
         self.game_state = game_state
         self.parent = parent
         self.action = action
@@ -101,16 +124,17 @@ class SimultaneousMoveNode(Node):
         return node
 
     
-    def append_child(self, next_player, joint_action):
+    def append_child(self, game_state, joint_action):
+        next_player = game_state.player
         for p, action in joint_action['action']:
             if p not in self.player_actions:
                 self.player_actions[p] = []
             self.player_actions[p].append(ActionNode(parent=self, player=p, action=action))
 
         if type(next_player) == list:
-            child_node = SimultaneousMoveNode(player=next_player, parent=self, action=action)
+            child_node = SimultaneousMoveNode(game_state=game_state, parent=self, action=action)
         else:
-            child_node = Node(player=next_player, parent=self, action=action)
+            child_node = Node(game_state=game_state, parent=self, action=action)
         self.children[joint_action['action']] = child_node
         return child_node
 
