@@ -37,18 +37,12 @@ class Node:
 
         return node
 
-    
-    def expand(self, next_player, possible_actions):
-        unexplored_actions = self.unexplored_actions(possible_actions)
-        if unexplored_actions != []:
-            action = random.choice(unexplored_actions)
-            node = self.append_child(next_player, action)
-            return node
 
-
-    def append_child(self, game_state, action):
+    def append_child(self, observing_player, game_state, action):
         next_player = game_state.player
-        if type(next_player) == list:
+        if observing_player != next_player and observing_player not in next_player:
+            child_node = EnvironmentalNode(game_state=game_state, parent=self, action=action)
+        elif type(next_player) == list:
             child_node = SimultaneousMoveNode(player=next_player, parent=self, action=action)
         else:
             child_node = Node(player=next_player, parent=self, action=action)
@@ -124,17 +118,19 @@ class SimultaneousMoveNode(Node):
         return node
 
     
-    def append_child(self, game_state, joint_action):
+    def append_child(self, observing_player, game_state, joint_action):
         next_player = game_state.player
         for p, action in joint_action.value:
             if p not in self.player_actions:
                 self.player_actions[p] = []
             self.player_actions[p].append(ActionNode(parent=self, player=p, action=action))
 
-        if type(next_player) == list:
-            child_node = SimultaneousMoveNode(game_state=game_state, parent=self, action=action)
+        if observing_player != next_player and observing_player not in next_player:
+            child_node = EnvironmentalNode(game_state=game_state, parent=self, action=action)
+        elif type(next_player) == list:
+            child_node = SimultaneousMoveNode(player=next_player, parent=self, action=action)
         else:
-            child_node = Node(game_state=game_state, parent=self, action=action)
+            child_node = Node(player=next_player, parent=self, action=action)
         self.children[joint_action.value] = child_node
         return child_node
 
@@ -148,7 +144,10 @@ class SimultaneousMoveNode(Node):
         self.visits += 1 
         self.determination_visits[terminal_state.determination] += 1
     
-
+"""
+Stores the actions of a single player in a simultaneous move. DUCT evaluates
+UCT on all action nodes for each player to find the optimal joint action.
+"""
 class ActionNode():
     def __init__(self, player, parent, action):
         self.player = player           
