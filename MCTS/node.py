@@ -17,9 +17,8 @@ A class used to define nodes in the Monte Carlo tree, including methods
 used for node expansion, selection and backpropagation.
 '''
 class Node:
-    def __init__(self, player, game_state, parent=None, action=None):     
+    def __init__(self, player, parent=None, action=None):     
         self.player = player                # Player id for the player that this node belongs to
-        self.game_state = game_state        # Representation of the game
         self.parent = parent                # None if root state
         self.action = action                # Action that parent took to lead to this node. None if root state.
         self.reward = 0                     # MCTS reward during backpropagation
@@ -45,32 +44,32 @@ class Node:
     def append_child(self, observing_player, game_state, action):
         next_player = game_state.player
         if observing_player != next_player and observing_player not in next_player:
-            child_node = EnvironmentalNode(game_state, self, action)
+            child_node = EnvironmentalNode(self, action)
         elif type(next_player) == list:
-            child_node = SimultaneousMoveNode(next_player,game_state, self, action)
+            child_node = SimultaneousMoveNode(next_player, self, action)
         else:
-            child_node = Node(next_player, game_state, self, action)
+            child_node = Node(next_player, self, action)
         self.children[action.value] = child_node
         return child_node
 
     
     def backpropagate(self, terminal_state, child_node):
-        self.reward += terminal_state.get_result(self.player)
-        self.determination_visits[terminal_state.determination] += 1
+        self.reward += terminal_state.game_result(self.player)
+        
+        d = terminal_state.determination
+        if d not in self.determination_visits:
+            self.determination_visits[d] = 0
+        
+        self.determination_visits[d] += 1
         self.visits += 1
 
 
     def unexplored_actions(self, possible_actions):
         return [a for a in possible_actions if a.value not in self.children.keys()]
 
-
-    def __eq__(self, other):
-        return self.game_state == other.game_state   
-
     
     def __repr__(self):
-        return "%s: [A:%s  W/V/A: %i/%i/%i]" % (
-            self.game_state.state_name,
+        return "[A:%s  W/V/A: %i/%i/%i]" % (
             self.action,
             self.reward,
             self.visits,
@@ -84,9 +83,8 @@ This includes TERMINAL states and SABOTAGE states, in the perspective of a non-s
 merely filler nodes to store information about successive and preceding nodes in a player tree.
 '''
 class EnvironmentalNode(Node):
-    def __init__(self, game_state, parent=None, action=None):
+    def __init__(self, parent=None, action=None):
         self.player = -1
-        self.game_state = game_state
         self.parent = parent
         self.action = action                                                          
         self.visits = 0
@@ -108,7 +106,6 @@ over each player's possible actions and constructs an optimal 'joint action', th
 class SimultaneousMoveNode(Node):
     def __init__(self, player, game_state, parent=None, action=None):
         self.player = player                
-        self.game_state = game_state
         self.parent = parent
         self.action = action
         self.visits = 0
@@ -153,11 +150,12 @@ class SimultaneousMoveNode(Node):
         joint_action = child_node.action
         for p, action in joint_action:
             action_node, = [node for node in self.player_actions[p] if node.action == action]
-            action_node.reward += terminal_state.get_result(p)
+            action_node.reward += terminal_state.game_result(p)
             action_node.visits += 1
         self.visits += 1 
         self.determination_visits[terminal_state.determination] += 1
     
+
 """
 Stores the actions of a single player in a simultaneous move. DUCT evaluates
 UCT on all action nodes for each player to find the optimal joint action.
