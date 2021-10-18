@@ -126,7 +126,7 @@ class SimultaneousMoveNode(Node):
     
     def append_child(self, game_state, joint_action):
         next_player = game_state.player
-        for p, action in joint_action['action']:
+        for p, action in joint_action.value:
             if p not in self.player_actions:
                 self.player_actions[p] = []
             self.player_actions[p].append(ActionNode(parent=self, player=p, action=action))
@@ -135,7 +135,7 @@ class SimultaneousMoveNode(Node):
             child_node = SimultaneousMoveNode(game_state=game_state, parent=self, action=action)
         else:
             child_node = Node(game_state=game_state, parent=self, action=action)
-        self.children[joint_action['action']] = child_node
+        self.children[joint_action.value] = child_node
         return child_node
 
     
