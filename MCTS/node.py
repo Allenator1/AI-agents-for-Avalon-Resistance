@@ -8,6 +8,9 @@ class PlayerTree:
         self.root_node = root_node
         self.current_node = root_node
 
+    def __repr__(self):
+        return f'Root node: {str(self.root_node)} | Current node: {str(self.current_node)}'
+
 
 '''
 A class used to define nodes in the Monte Carlo tree, including methods
@@ -27,7 +30,8 @@ class Node:
            
 
     def ucb_selection(self, possible_actions, exploration):
-        legal_children = filter(lambda c: c.action in possible_actions, self.children.values())
+        possible_actions = [a.value for a in possible_actions]
+        legal_children = [c for a, c in self.children.items() if a in possible_actions]
         ucb_eq = lambda c: c.reward / c.visits + exploration * sqrt(log(c.avails) / c.visits)
         
         for child in legal_children:
@@ -41,12 +45,12 @@ class Node:
     def append_child(self, observing_player, game_state, action):
         next_player = game_state.player
         if observing_player != next_player and observing_player not in next_player:
-            child_node = EnvironmentalNode(game_state=game_state, parent=self, action=action)
+            child_node = EnvironmentalNode(game_state, self, action)
         elif type(next_player) == list:
-            child_node = SimultaneousMoveNode(player=next_player, parent=self, action=action)
+            child_node = SimultaneousMoveNode(next_player,game_state, self, action)
         else:
-            child_node = Node(player=next_player, parent=self, action=action)
-        self.children[action] = child_node
+            child_node = Node(next_player, game_state, self, action)
+        self.children[action.value] = child_node
         return child_node
 
     
@@ -57,11 +61,21 @@ class Node:
 
 
     def unexplored_actions(self, possible_actions):
-        return filter(lambda a: a not in self.children.keys(), possible_actions)
+        return [a for a in possible_actions if a.value not in self.children.keys()]
 
 
     def __eq__(self, other):
         return self.game_state == other.game_state   
+
+    
+    def __repr__(self):
+        return "%s: [A:%s  W/V/A: %i/%i/%i]" % (
+            self.game_state.state_name,
+            self.action,
+            self.reward,
+            self.visits,
+            self.avails,
+        )
 
 
 '''
