@@ -36,6 +36,13 @@ class GameState():
         self.num_selection_fails == other.num_selection_fails and \
         self.mission == other.mission
 
+    
+    def __repr__(self):
+        s = f'game state = {self.state_name} |' + \
+            f' current player/s = {self.player} |' + \
+            f' R/S/F = {self.rnd}/{self.missions_succeeded}/{self.rnd - self.missions_succeeded} |' 
+        return s
+
 '''
 A class to encapsulate information relevant to an action
 '''
@@ -55,12 +62,16 @@ class Action():
         self.partially_observable == other.partially_observable and \
         self.is_simultaneous == other.is_simultaneous
 
+    
+    def __repr__(self):
+        return 'Action[' + str(self.value) + ']'
+
 
 '''
 A class used to define a perfect information representation of a game state in 
 Avalon Resistance, including methods to get all moves and apply moves.
 '''
-class ResistanceState():
+class ResistanceState(GameState):
     def __init__(self, determination, game_state):
         self.leader = game_state.leader                             
         self.player = game_state.player                                       
@@ -77,22 +88,22 @@ class ResistanceState():
         actions = []
         num_players = len(self.determination)
 
-        if self.gamestate == StateNames.SELECTION:
+        if self.state_name == StateNames.SELECTION:
             mission_size = Agent.mission_sizes[num_players][self.rnd - 1]
             possible_missions = combinations(range(num_players), mission_size) 
-            actions = [Action(StateNames.SELECTION, mission, False) for mission in possible_missions]
+            actions = [Action(StateNames.SELECTION, tuple(mission), False) for mission in possible_missions]
             
-        elif self.gamestate == StateNames.VOTING:
+        elif self.state_name == StateNames.VOTING:
             voting_combinations = product([False, True], repeat=num_players) 
-            actions = [Action(StateNames.VOTING, enumerate(votes), False) for votes in voting_combinations]
+            actions = [Action(StateNames.VOTING, tuple(enumerate(votes)), False) for votes in voting_combinations]
 
-        elif self.gamestate == StateNames.SABOTAGE:
+        elif self.state_name == StateNames.SABOTAGE:
             spies = [p for p in range(num_players) if self.determination[p]]
             spies_in_mission = [p for p in self.mission if p in spies]
 
-            sabotage_combinations = product((False, True), repeat=spies_in_mission)
+            sabotage_combinations = product((False, True), repeat=len(spies_in_mission))
             sabotage_combinations = [zip(spies_in_mission, sabotages) for sabotages in sabotage_combinations]
-            actions = [Action(StateNames.SABOTAGE, sabotages, False) for sabotages in sabotage_combinations]
+            actions = [Action(StateNames.SABOTAGE, tuple(sabotages), False) for sabotages in sabotage_combinations]
 
         return actions
 
@@ -103,7 +114,7 @@ class ResistanceState():
         spies = [p for p in range(num_players) if self.determination[p]]
 
         if action.type == StateNames.SELECTION:
-            self.gamestate = StateNames.VOTING
+            self.state_name = StateNames.VOTING
             self.player = range(num_players)
             self.mission = action.value                         # Action is a list of player ids in the mission
 
@@ -115,10 +126,10 @@ class ResistanceState():
 
             if num_votes_for * 2 > len(votes):
                 if spies_in_mission:
-                    self.gamestate = StateNames.SABOTAGE
+                    self.state_name = StateNames.SABOTAGE
                     self.player = spies_in_mission
                 else:
-                    self.gamestate = StateNames.SELECTION
+                    self.state_name = StateNames.SELECTION
                     self.leader = (self.leader + 1) % len(self.determination) 
                     self.player = self.leader
                     self.rnd += 1
@@ -126,13 +137,13 @@ class ResistanceState():
                 self.num_selection_fails = 0
 
             elif self.num_selection_fails < 5:
-                self.gamestate = StateNames.SELECTION
+                self.state_name = StateNames.SELECTION
                 self.leader = (self.leader + 1) % len(self.determination) 
                 self.player = self.leader
                 self.num_selection_fails += 1
 
             else:
-                self.gamestate = StateNames.SELECTION
+                self.state_name = StateNames.SELECTION
                 self.leader = (self.leader + 1) % len(self.determination) 
                 self.player = self.leader
                 self.num_selection_fails = 0
@@ -150,10 +161,10 @@ class ResistanceState():
             if num_sabotages < num_fails_required:
                 self.missions_succeeded += 1
 
-            if self.rnd == 5:
-                self.gamestate = StateNames.TERMINAL
+            if self.rnd >= 5:
+                self.state_name = StateNames.TERMINAL
             else:
-                self.gamestate = StateNames.SELECTION
+                self.state_name = StateNames.SELECTION
                 self.leader = (self.leader + 1) % len(self.determination) 
                 self.player = self.leader
 
@@ -172,8 +183,3 @@ class ResistanceState():
     def get_game_state(self):
         return GameState(self.leader, self.player, self.state_name, self.rnd, self.missions_succeeded, 
             self.mission, self.num_selection_fails)
-
-    
-    def __repr__(self):
-        return f'STATE:{self.gamestate} rnd/successes/fails: ' + \
-            f'{self.rnd}/{self.missions_succeeded}/{self.rnd - self.missions_succeeded}'
