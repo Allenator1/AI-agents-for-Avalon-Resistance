@@ -89,7 +89,7 @@ class ResistanceState(GameState):
         num_players = len(self.determination)
 
         if self.state_name == StateNames.SELECTION:
-            mission_size = Agent.mission_sizes[num_players][self.rnd - 1]
+            mission_size = Agent.mission_sizes[num_players][self.rnd]
             possible_missions = combinations(range(num_players), mission_size) 
             actions = [Action(StateNames.SELECTION, tuple(mission), False) for mission in possible_missions]
             
@@ -161,12 +161,13 @@ class ResistanceState(GameState):
             if num_sabotages < num_fails_required:
                 self.missions_succeeded += 1
 
-            if self.rnd >= 5:
-                self.state_name = StateNames.TERMINAL
             else:
                 self.state_name = StateNames.SELECTION
                 self.leader = (self.leader + 1) % len(self.determination) 
                 self.player = self.leader
+        
+        if self.rnd > 4:
+            self.state_name = StateNames.TERMINAL
 
 
     # Returns the reward for a player based on the current determination stored in the state
