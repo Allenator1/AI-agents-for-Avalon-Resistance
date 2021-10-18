@@ -1,7 +1,7 @@
 import random
 from copy import deepcopy, copy
 from itertools import combinations
-from MCTS.state import ResistanceState, Gamestates, Roles
+from MCTS.state import ResistanceState, StateNames, Roles
 from MCTS.node import Node, SimultaneousMoveNode, PlayerTree
 from agent import Agent
 
@@ -59,7 +59,7 @@ class Monte(Agent):
         to be returned. 
         fails_required are the number of fails required for the mission to fail.
         '''
-        self.gamestate = Gamestates.SELECTION
+        self.gamestate = StateNames.SELECTION
         self.current_player = self.player
         if self.total_iterations == 0:
             self.forest = initialise_player_trees(self.current_player)
@@ -79,7 +79,7 @@ class Monte(Agent):
         proposer is an int between 0 and number_of_players and is the index of the player who proposed the mission.
         The function should return True if the vote is for the mission, and False if the vote is against the mission.
         '''
-        self.gamestate = Gamestates.VOTING
+        self.gamestate = StateNames.VOTING
         self.current_player = [p for p in range(self.num_players)]
         if self.rnd == 0:
             self.forest = initialise_player_trees(self.current_player)
@@ -103,9 +103,9 @@ class Monte(Agent):
         self.action = [(p, v) for p, v in votes.items()]
         num_votes_for = sum(votes.values())
         if num_votes_for * 2 > len(votes):
-            self.gamestate = Gamestates.SABOTAGE
+            self.gamestate = StateNames.SABOTAGE
         else:
-            self.gamestate = Gamestates.SELECTION
+            self.gamestate = StateNames.SELECTION
             self.num_selection_fails += 1
 
 
@@ -130,7 +130,7 @@ class Monte(Agent):
         It iss not expected or required for this function to return anything.
         '''
         self.action = num_fails
-        self.state = Gamestates.SELECTION
+        self.state = StateNames.SELECTION
         self.rnd += 1
         self.missions_succeeded += mission_success
 
@@ -188,7 +188,7 @@ class Monte(Agent):
                 for p in range(self.num_players):
                     observed_action = get_observed_action(p, action, state)
                     if observed_action not in current_node(p).children:
-                        child = current_node(p).append_child(state.get_game_state(), observed_action)
+                        child = current_node(p).append_child(p, state.get_game_state(), observed_action)
                         d_forest[p].current_node = child
 
             # playout
@@ -196,11 +196,11 @@ class Monte(Agent):
 
             # backpropagation
             for p in range(self.num_players):
-                while (current_node(p).parent != None):   # backpropagate to root node
+                while (current_node(p) != None):   # backpropagate to root node
                     current_node(p).parent.backpropagate(terminal_state, current_node(p))
                     d_forest[p].current_node = current_node(p).parent
 
-        return max(current_node(self.player).children.values(), key=lambda c: c.visits)
+        return max(current_node(self.player).children.values(), key=lambda c: c.visits)   
 
 
 def playout(state):
@@ -245,10 +245,11 @@ def initialise_determinations(player, num_players):
     return determinations, probabilities
 
 
-def get_observed_action(player, action, parent_state):
-    if parent_state.gamestate == Gamestates.SABOTAGE and player in parent_state.player:
-        betrays = [betrayed for _, betrayed in action]
-        observed_action = sum(betrays)
+def get_observed_action(player, action, state):
+    if player != state.player and player not in state.player:  
+        # Assume SABOTAGE state in this case, as it is the only partially observable state.    
+        betrays = [betrayed for _, betrayed in action.value]
+        observed_action = (sum(betrays), state.mission)
     else:
         observed_action = action
     return observed_action
