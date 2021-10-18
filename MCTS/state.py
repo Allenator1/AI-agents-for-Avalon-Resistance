@@ -27,6 +27,7 @@ class GameState():
         self.mission = mission                                
         self.num_selection_fails = num_selection_fails      # Number of times a team has been rejected in the same round (max 5)  
     
+    
     def __eq__(self, other):
         self.leader = other.leader
         self.state_name = other.state_name and \
@@ -47,6 +48,12 @@ class Action():
         else: 
             self.is_simultaneous = False
         self.partially_observable = partially_observable
+    
+
+    def __eq__(self, other):
+        return self.type == other.type and self.value == other.value and \
+        self.partially_observable == other.partially_observable and \
+        self.is_simultaneous == other.is_simultaneous
 
 
 '''
