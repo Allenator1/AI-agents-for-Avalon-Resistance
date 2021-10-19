@@ -145,8 +145,8 @@ class SimultaneousMoveNode(Node):
                 action.avails += 1
 
             selected_action = max(actions, key=ucb_eq)
-            joint_action.append((p, selected_action))
-        node = self.children[joint_action]
+            joint_action.append((p, selected_action.value))
+        node = self.children[tuple(joint_action)]
         return node
 
     
@@ -155,17 +155,19 @@ class SimultaneousMoveNode(Node):
         for p, action in joint_action.value:
             if p not in self.player_actions:
                 self.player_actions[p] = []
-            self.player_actions[p].append(ActionNode(parent=self, player=p, action=action))
+            explored_actions = [a.value for a in self.player_actions[p]]
+            if action not in explored_actions:
+                self.player_actions[p].append(ActionNode(parent=self, player=p, value=action))
 
         # does the next state produce partially observable moves in the perspective of the observer.
         is_partial_observer = not observer_is_spy and next_state.state_name == StateNames.SABOTAGE
 
         if is_partial_observer or next_state.state_name == StateNames.TERMINAL:
-            child_node = EnvironmentalNode(parent=self, action=action)
+            child_node = EnvironmentalNode(parent=self, action=joint_action)
         elif type(next_player) == tuple:
-            child_node = SimultaneousMoveNode(player=next_player, parent=self, action=action)
+            child_node = SimultaneousMoveNode(player=next_player, parent=self, action=joint_action)
         else:
-            child_node = Node(player=next_player, parent=self, action=action)
+            child_node = Node(player=next_player, parent=self, action=joint_action)
         self.children[joint_action.value] = child_node
         return child_node
 
@@ -173,10 +175,11 @@ class SimultaneousMoveNode(Node):
     def backpropagate(self, terminal_state, child_node=None):
         if child_node:
             joint_action = child_node.action
-            for p, action in joint_action:
-                action_node, = [node for node in self.player_actions[p] if node.action == action]
-                action_node.reward += terminal_state.game_result(p)
-                action_node.visits += 1
+            for p, action in joint_action.value:
+                backpropagated_action, = [node for node in self.player_actions[p] if node.value == action]
+                backpropagated_action.reward += terminal_state.game_result(p)
+                for action_node in self.player_actions[p]:
+                    action_node.visits += 1
 
         d = terminal_state.determination
         if d not in self.determination_visits:
@@ -200,18 +203,21 @@ Stores the actions of a single player in a simultaneous move. DUCT evaluates
 UCT on all action nodes for each player to find the optimal joint action.
 """
 class ActionNode():
-    def __init__(self, player, parent, action):
+    def __init__(self, player, parent, value):
         self.player = player           
         self.parent = parent
-        self.action = action                    # action is either True or False (e.g., a player voted True)                
+        self.value = value                    # action is either True or False (e.g., a player voted True)                
         self.reward = 0
         self.visits = 0
         self.avails = 0
 
-
     def backpropagate(self, terminal_state):
         self.reward += terminal_state.get_result(self.player)
         self.visits += 1
+
+    def __repr__(self):
+        return 'A[' + str(self.value) + ']'
+    
         
 
 
