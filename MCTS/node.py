@@ -69,7 +69,8 @@ class Node:
 
     
     def __repr__(self):
-        return "[%s  W/V/A: %i/%i/%i]" % (
+        return "Node - Player %i [%s  W/V/A: %i/%i/%i]" % (
+            self.player,
             self.action,
             self.reward,
             self.visits,
@@ -166,6 +167,15 @@ class SimultaneousMoveNode(Node):
         self.determination_visits[terminal_state.determination] += 1
         return self
     
+
+    def __repr__(self):
+        return "SimultaneousMoveNode - Player %i [%s  V/A: %i/%i/%i]" % (
+            self.player,
+            self.action,
+            self.visits,
+            self.avails,
+        )
+
 
 """
 Stores the actions of a single player in a simultaneous move. DUCT evaluates
