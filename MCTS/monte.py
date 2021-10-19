@@ -1,7 +1,7 @@
 import random
 from copy import deepcopy, copy
 from itertools import combinations
-from MCTS.state import ResistanceState, GameState, StateNames, Roles
+from MCTS.state import ResistanceState, StateNames, Roles
 from MCTS.node import Node, SimultaneousMoveNode, PlayerTree
 from agent import Agent
 
@@ -21,15 +21,14 @@ class Monte(Agent):
         self.num_players = 5
         self.determinations, self.probabilities = initialise_determinations(self.player, self.num_players)
 
-        self.game_state = GameState(leader=self.player, 
-            player=self.player, 
-            state_name=StateNames.SELECTION, 
-            rnd=0, 
-            missions_succeeded=0, 
-            mission=[], 
-            num_selection_fails=0)
+        self.leader = self.player
+        self.state_name=StateNames.SELECTION
+        self.rnd=0
+        self.missions_succeeded=0
+        self.mission=[]
+        self.num_selection_fails=0
 
-        self.forest = initialise_player_trees(self.game_state.player, self.num_players)
+        self.forest = initialise_player_trees(self.player, self.num_players)
 
         selected_node = self.inference_ISMCTS(NUM_ITERATIONS)
 
@@ -134,7 +133,8 @@ class Monte(Agent):
         for i in range(itermax):
             # determinize
             determination = random.choice(self.determinations)
-            state = ResistanceState(determination, self.game_state)
+            state = ResistanceState(determination, self.leader, self.player, self.state_name, self.rnd,
+                self.missions_succeeded, self.mission, self.num_selection_fails)
             
             # extracting the trees where player roles are compatible with the current determination, producing a single tree for each player
             d_forest = [self.forest[p][determination[p]] for p in range(self.num_players)] 
@@ -149,10 +149,10 @@ class Monte(Agent):
                 # tree descent for other player trees
                 for p in range(self.num_players):
                     for _, tree in all_trees(p):
-                        children = d_tree(p).children.values()
+                        children = tree.current_node.children.values()
                         tree.current_node, = [c for c in children if c.action == node.action]
 
-                state = state.make_move(node.action)
+                state.make_move(node.action)
                 node = select_from_forest(state, d_forest)
 
             # expansion
@@ -177,15 +177,18 @@ class Monte(Agent):
                     child = d_tree(p).backpropagate(terminal_state, child)
                     d_forest[p].current_node = d_tree(p).parent
 
-                d_forest[p].current_node = d_forest[p].root_node
+            # reset tree iteration position
+            for p in range(self.num_players):
+                for _, tree in all_trees(p):
+                    tree.current_node = tree.root_node
 
         return max(d_tree(self.player).children.values(), key=lambda c: c.visits)   
 
 
-def expansion(tree, observer_is_spy, action, state):
-    observed_action = get_observed_action(observer_is_spy, state, action)
+def expansion(tree, observer_is_spy, action, new_state):
+    observed_action = get_observed_action(observer_is_spy, new_state, action)
     if observed_action.value not in tree.current_node.children:
-        child = tree.current_node.append_child(observer_is_spy, state, observed_action)
+        child = tree.current_node.append_child(observer_is_spy, new_state, observed_action)
         tree.current_node = child
 
 
@@ -199,7 +202,7 @@ def select_from_forest(state, forest):
     player = state.player
     if type(player) == int:                       # SELECTION node
         node = forest[player].current_node
-    elif type(player) == list:                    # Simultaneous action node (VOTING or SABOTAGE)
+    elif type(player) == tuple:                    # Simultaneous action node (VOTING or SABOTAGE)
         node = forest[random.choice(player)].current_node
     return node
 
