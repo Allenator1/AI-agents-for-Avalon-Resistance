@@ -71,7 +71,7 @@ class Tree():
 
     # who's on the mission
     def mission(self, state: States) -> int:
-        #given information
+        #enough spy to sabotage mission?
         if state.is_spy:
             spys_on_team = 0
             for player in state.current_mission:
