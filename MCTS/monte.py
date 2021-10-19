@@ -138,16 +138,19 @@ class Monte(Agent):
             
             # extracting the trees where player roles are compatible with the current determination, producing a single tree for each player
             d_forest = [self.forest[p][determination[p]] for p in range(self.num_players)] 
-            current_node = lambda p: d_forest[p].current_node
+            d_tree = lambda p: d_forest[p].current_node         # Obtains the current node of the tree rooted at determination d for player p
+            all_trees = lambda p: self.forest[p].items()        # Obtains all trees for player p (1 for each role they may take)
 
-            # selection and parallel tree descent  
+            # selection
             node = select_from_forest(state, d_forest)
-            while state.get_moves() != [] and node.unexplored_actions(state.get_moves()) == []:     # while node is non-terminal and fully explored
+            while state.get_moves() != [] and node.unexplored_actions(state.get_moves()) == []: 
                 node = node.ucb_selection(state.get_moves(), 0.7)
 
+                # tree descent for other player trees
                 for p in range(self.num_players):
-                    children = current_node(p).children.values()
-                    d_forest[p].current_node, = [c for c in children if c.action == node.action]
+                    for _, tree in all_trees(p):
+                        children = d_tree(p).children.values()
+                        tree.current_node, = [c for c in children if c.action == node.action]
 
                 state = state.make_move(node.action)
                 node = select_from_forest(state, d_forest)
@@ -159,26 +162,31 @@ class Monte(Agent):
                 state.make_move(action)
                 # expand for each player tree via the action in their perspective
                 for p in range(self.num_players):
-                    observed_action = get_observed_action(p, action, state)
-                    if observed_action.value not in current_node(p).children:
-                        child = current_node(p).append_child(p, state.player, observed_action)
-                        d_forest[p].current_node = child
+                    for observer_is_spy, tree in all_trees(p):
+                        expansion(tree, observer_is_spy, action, state)
 
             # playout
             terminal_state = playout(state)
             
             # backpropagation
             for p in range(self.num_players):
-                child_node = current_node(p).backpropagate(terminal_state)
-                d_forest[p].current_node = current_node(p).parent
+                child = d_tree(p).backpropagate(terminal_state)
+                d_forest[p].current_node = d_tree(p).parent
                 
-                while (current_node(p) != None):   # backpropagate to root node
-                    child_node = current_node(p).backpropagate(terminal_state, child_node)
-                    d_forest[p].current_node = current_node(p).parent
+                while (d_tree(p) != None):   # backpropagate to root node
+                    child = d_tree(p).backpropagate(terminal_state, child)
+                    d_forest[p].current_node = d_tree(p).parent
 
                 d_forest[p].current_node = d_forest[p].root_node
 
-        return max(current_node(self.player).children.values(), key=lambda c: c.visits)   
+        return max(d_tree(self.player).children.values(), key=lambda c: c.visits)   
+
+
+def expansion(tree, observer_is_spy, action, state):
+    observed_action = get_observed_action(observer_is_spy, state, action)
+    if observed_action.value not in tree.current_node.children:
+        child = tree.current_node.append_child(observer_is_spy, state, observed_action)
+        tree.current_node = child
 
 
 def playout(state):
@@ -223,11 +231,10 @@ def initialise_determinations(player, num_players):
     return determinations, probabilities
 
 
-def get_observed_action(player, action, state):
-    if player != state.player and player not in state.player:  
-        # Assume SABOTAGE state in this case, as it is the only partially observable state.    
+def get_observed_action(observer_is_spy, next_state, action):
+    if not observer_is_spy and action.type == StateNames.SABOTAGE:  
         betrays = [betrayed for _, betrayed in action.value]
-        observed_action = (sum(betrays), state.mission)
+        observed_action = (sum(betrays), next_state.mission)
     else:
         observed_action = action
     return observed_action
