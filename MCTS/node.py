@@ -41,13 +41,19 @@ class Node:
         return node
 
 
-    def append_child(self, observing_player, next_player, action):
-        if observing_player != next_player and observing_player not in next_player:
-            child_node = EnvironmentalNode(self, action)
+    def append_child(self, observer_is_spy, next_state, action):
+        next_player = next_state.player
+
+        # does the next state produce partially observable moves in the perspective of the observer.
+        is_partial_observer = not observer_is_spy and next_state.state_name == StateNames.SABOTAGE
+
+        if is_partial_observer or next_state.state_name == StateNames.TERMINAL:
+            child_node = EnvironmentalNode(parent=self, action=action)
         elif type(next_player) == tuple:
             child_node = SimultaneousMoveNode(next_player, self, action)
         else:
             child_node = Node(next_player, self, action)
+
         self.children[action.value] = child_node
         return child_node
 
@@ -94,10 +100,16 @@ class EnvironmentalNode(Node):
         self.determination_visits = {}
         self.children = {}
 
-
     def backpropagate(self, terminal_state, child_node):
         self.determination_visits[terminal_state.determination] += 1
         self.visits += 1
+    
+    def __repr__(self):
+        return "Env node - [%s  V/A: %i/%i]" % (
+            self.action,
+            self.visits,
+            self.avails,
+        )
 
 
 '''
@@ -134,15 +146,18 @@ class SimultaneousMoveNode(Node):
         return node
 
     
-    def append_child(self, observing_player, game_state, joint_action):
-        next_player = game_state.player
+    def append_child(self, observer_is_spy, next_state, joint_action):
+        next_player = next_state.player
         for p, action in joint_action.value:
             if p not in self.player_actions:
                 self.player_actions[p] = []
             self.player_actions[p].append(ActionNode(parent=self, player=p, action=action))
 
-        if observing_player != next_player and observing_player not in next_player:
-            child_node = EnvironmentalNode(game_state=game_state, parent=self, action=action)
+        # does the next state produce partially observable moves in the perspective of the observer.
+        is_partial_observer = not observer_is_spy and next_state.state_name == StateNames.SABOTAGE
+
+        if is_partial_observer or next_state.state_name == StateNames.TERMINAL:
+            child_node = EnvironmentalNode(parent=self, action=action)
         elif type(next_player) == tuple:
             child_node = SimultaneousMoveNode(player=next_player, parent=self, action=action)
         else:
@@ -169,8 +184,7 @@ class SimultaneousMoveNode(Node):
     
 
     def __repr__(self):
-        return "SimultaneousMoveNode - Player %i [%s  V/A: %i/%i/%i]" % (
-            self.player,
+        return "SimultanousMoveNode - [%s  V/A: %i/%i]" % (
             self.action,
             self.visits,
             self.avails,
