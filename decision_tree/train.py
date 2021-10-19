@@ -239,7 +239,7 @@ def test_game(trees):
         winner = "RESISTANCE"
     return winner,winning_trees
 
-#
+#checks converge 
 def check_converge():
     total = 0
     current_best_score = 0

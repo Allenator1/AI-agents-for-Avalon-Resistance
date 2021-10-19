@@ -1,4 +1,4 @@
-### Decision tree agent
+# Decision tree agent
 ## Structure
 ```
 decision_tree_agent.py                   ---gamplay---
@@ -7,6 +7,17 @@ model.py                                 ---state---
 train.py                                 ---training---          
 tree.py                                  ---tree_representation---
 ```
+
+## Useage
+1. Training 
+> $ python3 train.py 
+
+2. Tournament play
+> require tree.py model.py decision_tree_agent.py in the same directory 
+> from decision_tree_agent import DecisionTreeAgent
+
+
+# Wiki
 **Tree.py**
 - Class used for representing, generating and traversing decision trees for game agent of "the resisitance"
 ---------------------------------------------
