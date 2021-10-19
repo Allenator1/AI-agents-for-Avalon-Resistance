@@ -58,7 +58,7 @@ class Node:
         return child_node
 
     
-    def backpropagate(self, terminal_state, child_node):
+    def backpropagate(self, terminal_state, child_node=None):
         self.reward += terminal_state.game_result(self.player)
         
         d = terminal_state.determination
@@ -100,7 +100,11 @@ class EnvironmentalNode(Node):
         self.determination_visits = {}
         self.children = {}
 
-    def backpropagate(self, terminal_state, child_node):
+    def backpropagate(self, terminal_state, child_node=None):
+        d = terminal_state.determination
+        if d not in self.determination_visits:
+            self.determination_visits[d] = 0
+
         self.determination_visits[terminal_state.determination] += 1
         self.visits += 1
     
