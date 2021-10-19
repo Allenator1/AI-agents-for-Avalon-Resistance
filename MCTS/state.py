@@ -43,6 +43,7 @@ class GameState():
             f' R/S/F = {self.rnd}/{self.missions_succeeded}/{self.rnd - self.missions_succeeded} |' 
         return s
 
+
 '''
 A class to encapsulate information relevant to an action
 '''
@@ -58,12 +59,20 @@ class Action():
     
 
     def __eq__(self, other):
-        other_action = other.value
         if self.type == other.type and self.type == StateNames.SABOTAGE:
-            if not other.partially_observable:
-                num_sabotages, _ = zip(*other.value)
-            elif not self.partially_observable:
-                self_players, _ = zip(*other.value)
+            if other.partially_observable:
+                other_num_sabotages = other.value[0]
+            else:
+                other_num_sabotages = sum(zip(*other.value)[1])
+            if self.partially_observable:
+                self_num_sabotages = self.value[0]
+            else:
+                self_num_sabotages = sum(zip(*other.value)[1])
+            return self_num_sabotages == other_num_sabotages
+        elif self.type == other.type:
+            return self.value == other.value
+        return False
+            
                 
 
     
