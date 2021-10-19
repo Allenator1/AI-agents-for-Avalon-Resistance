@@ -147,7 +147,7 @@ class Monte(Agent):
 
                 for p in range(self.num_players):
                     children = current_node(p).children.values()
-                    d_forest[p].current_node, = [c for c in children if c == node]
+                    d_forest[p].current_node, = [c for c in children if c.action == node.action]
 
                 state = state.make_move(node.action)
                 node = select_from_forest(state, d_forest)

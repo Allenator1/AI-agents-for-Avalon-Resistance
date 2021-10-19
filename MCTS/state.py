@@ -58,9 +58,13 @@ class Action():
     
 
     def __eq__(self, other):
-        return self.type == other.type and self.value == other.value and \
-        self.partially_observable == other.partially_observable and \
-        self.is_simultaneous == other.is_simultaneous
+        other_action = other.value
+        if self.type == other.type and self.type == StateNames.SABOTAGE:
+            if not other.partially_observable:
+                num_sabotages, _ = zip(*other.value)
+            elif not self.partially_observable:
+                self_players, _ = zip(*other.value)
+                
 
     
     def __repr__(self):
