@@ -115,11 +115,11 @@ class ResistanceState(GameState):
 
         if action.type == StateNames.SELECTION:
             self.state_name = StateNames.VOTING
-            self.player = range(num_players)
+            self.player = tuple(range(num_players))
             self.mission = action.value                         # Action is a list of player ids in the mission
 
         elif action.type == StateNames.VOTING:
-            spies_in_mission = [p for p in self.mission if p in spies]
+            spies_in_mission = tuple([p for p in self.mission if p in spies])
             player_votes = action.value                         # Action has format ((p1, action1), (p2, action2), (p3, action3), ...)
             votes = [vote for _, vote in player_votes]
             num_votes_for = sum(votes)

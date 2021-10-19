@@ -41,11 +41,10 @@ class Node:
         return node
 
 
-    def append_child(self, observing_player, game_state, action):
-        next_player = game_state.player
+    def append_child(self, observing_player, next_player, action):
         if observing_player != next_player and observing_player not in next_player:
             child_node = EnvironmentalNode(self, action)
-        elif type(next_player) == list:
+        elif type(next_player) == tuple:
             child_node = SimultaneousMoveNode(next_player, self, action)
         else:
             child_node = Node(next_player, self, action)
@@ -62,6 +61,7 @@ class Node:
         
         self.determination_visits[d] += 1
         self.visits += 1
+        return self
 
 
     def unexplored_actions(self, possible_actions):
@@ -69,7 +69,7 @@ class Node:
 
     
     def __repr__(self):
-        return "[A:%s  W/V/A: %i/%i/%i]" % (
+        return "[%s  W/V/A: %i/%i/%i]" % (
             self.action,
             self.reward,
             self.visits,
@@ -86,8 +86,10 @@ class EnvironmentalNode(Node):
     def __init__(self, parent=None, action=None):
         self.player = -1
         self.parent = parent
-        self.action = action                                                          
+        self.action = action
+        self.reward = 0                                                          
         self.visits = 0
+        self.avails = 0
         self.determination_visits = {}
         self.children = {}
 
@@ -104,11 +106,13 @@ The selection process uses Decoupled UCT Selection (DUCT) to choose a child node
 over each player's possible actions and constructs an optimal 'joint action', through which a child node is chosen.
 '''
 class SimultaneousMoveNode(Node):
-    def __init__(self, player, game_state, parent=None, action=None):
+    def __init__(self, player, parent=None, action=None):
         self.player = player                
         self.parent = parent
         self.action = action
+        self.reward = 0
         self.visits = 0
+        self.avails = 0
         self.determination_visits = {}
         self.player_actions = {}            # {player_id: [action_node, ...], ...}
         self.children = {}                  # {joint_action: childnode, ...}
@@ -138,7 +142,7 @@ class SimultaneousMoveNode(Node):
 
         if observing_player != next_player and observing_player not in next_player:
             child_node = EnvironmentalNode(game_state=game_state, parent=self, action=action)
-        elif type(next_player) == list:
+        elif type(next_player) == tuple:
             child_node = SimultaneousMoveNode(player=next_player, parent=self, action=action)
         else:
             child_node = Node(player=next_player, parent=self, action=action)
@@ -146,14 +150,21 @@ class SimultaneousMoveNode(Node):
         return child_node
 
     
-    def backpropagate(self, terminal_state, child_node):
-        joint_action = child_node.action
-        for p, action in joint_action:
-            action_node, = [node for node in self.player_actions[p] if node.action == action]
-            action_node.reward += terminal_state.game_result(p)
-            action_node.visits += 1
+    def backpropagate(self, terminal_state, child_node=None):
+        if child_node:
+            joint_action = child_node.action
+            for p, action in joint_action:
+                action_node, = [node for node in self.player_actions[p] if node.action == action]
+                action_node.reward += terminal_state.game_result(p)
+                action_node.visits += 1
+
+        d = terminal_state.determination
+        if d not in self.determination_visits:
+            self.determination_visits[d] = 0
+
         self.visits += 1 
         self.determination_visits[terminal_state.determination] += 1
+        return self
     
 
 """

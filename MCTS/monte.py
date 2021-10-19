@@ -1,7 +1,7 @@
 import random
 from copy import deepcopy, copy
 from itertools import combinations
-from MCTS.state import ResistanceState, StateNames, Roles
+from MCTS.state import ResistanceState, GameState, StateNames, Roles
 from MCTS.node import Node, SimultaneousMoveNode, PlayerTree
 from agent import Agent
 
@@ -17,6 +17,21 @@ class Monte(Agent):
         The agent will persist between games to allow for long-term learning etc.
         '''
         self.name = name
+        self.player = 0
+        self.num_players = 5
+        self.determinations, self.probabilities = initialise_determinations(self.player, self.num_players)
+
+        self.game_state = GameState(leader=self.player, 
+            player=self.player, 
+            state_name=StateNames.SELECTION, 
+            rnd=0, 
+            missions_succeeded=0, 
+            mission=[], 
+            num_selection_fails=0)
+
+        self.forest = initialise_player_trees(self.game_state.player, self.num_players)
+
+        selected_node = self.inference_ISMCTS(NUM_ITERATIONS)
 
 
     def __str__(self):
@@ -41,16 +56,7 @@ class Monte(Agent):
         and a list of agent indexes, which is the set of spies if this agent is a spy,
         or an empty list if this agent is not a spy.
         '''
-        self.player = player_number
-        self.num_players = number_of_players
-        self.rnd = 0
-        self.missions_succeeded = 0
-        self.num_selection_fails = 0
-        self.total_iterations = 0
-        
-        if spies == []:
-            self.is_spy = False
-            self.determinations, self.probabilities = initialise_determinations(player_number, number_of_players)
+        pass
 
 
     def propose_mission(self, team_size, fails_required = 1):
@@ -59,17 +65,7 @@ class Monte(Agent):
         to be returned. 
         fails_required are the number of fails required for the mission to fail.
         '''
-        self.gamestate = StateNames.SELECTION
-        self.current_player = self.player
-        if self.total_iterations == 0:
-            self.forest = initialise_player_trees(self.current_player)
-        
-        if not self.is_spy:
-            selected_node = self.inference_ISMCTS(NUM_ITERATIONS)
-            self.total_iterations += NUM_ITERATIONS
-            self.mission = selected_node.action
-
-        return self.mission    
+        pass 
 
 
     def vote(self, mission, proposer):
@@ -79,17 +75,7 @@ class Monte(Agent):
         proposer is an int between 0 and number_of_players and is the index of the player who proposed the mission.
         The function should return True if the vote is for the mission, and False if the vote is against the mission.
         '''
-        self.gamestate = StateNames.VOTING
-        self.current_player = [p for p in range(self.num_players)]
-        if self.rnd == 0:
-            self.forest = initialise_player_trees(self.current_player)
-
-        if not self.is_spy:
-            selected_node = self.inference_ISMCTS(NUM_ITERATIONS)
-            self.total_iterations += NUM_ITERATIONS
-            all_votes = selected_node.action
-
-        return all_votes[self.player][1]
+        pass
 
 
     def vote_outcome(self, mission, proposer, votes):
@@ -100,13 +86,7 @@ class Monte(Agent):
         votes is a dictionary mapping player indexes to Booleans (True if they voted for the mission, False otherwise).
         No return value is required or expected.
         '''
-        self.action = [(p, v) for p, v in votes.items()]
-        num_votes_for = sum(votes.values())
-        if num_votes_for * 2 > len(votes):
-            self.gamestate = StateNames.SABOTAGE
-        else:
-            self.gamestate = StateNames.SELECTION
-            self.num_selection_fails += 1
+        pass
 
 
     def betray(self, mission, proposer):
@@ -129,10 +109,7 @@ class Monte(Agent):
         and mission_success is True if there were not enough betrayals to cause the mission to fail, False otherwise.
         It iss not expected or required for this function to return anything.
         '''
-        self.action = num_fails
-        self.state = StateNames.SELECTION
-        self.rnd += 1
-        self.missions_succeeded += mission_success
+        pass
 
 
     def round_outcome(self, rounds_complete, missions_failed):
@@ -141,10 +118,7 @@ class Monte(Agent):
         rounds_complete, the number of rounds (0-5) that have been completed
         missions_failed, the numbe of missions (0-3) that have failed.
         '''
-        self.rnd = rounds_complete + 1
-        self.missions_succeeded = self.rnd - missions_failed
-        self.num_selection_fails = 0
-        self.mission = []
+        pass
     
 
     def game_outcome(self, spies_win, spies):
@@ -157,11 +131,10 @@ class Monte(Agent):
 
 
     def inference_ISMCTS(self, itermax):
-        for _ in range(itermax):
+        for i in range(itermax):
             # determinize
             determination = random.choice(self.determinations)
-            state = ResistanceState(determination, self.gamestate, self.rnd, self.missions_succeeded, self.player,
-                self.mission, self.num_selection_fails)
+            state = ResistanceState(determination, self.game_state)
             
             # extracting the trees where player roles are compatible with the current determination, producing a single tree for each player
             d_forest = [self.forest[p][determination[p]] for p in range(self.num_players)] 
@@ -183,22 +156,27 @@ class Monte(Agent):
             if state.get_moves() != []:    # if node is non-terminal
                 unexplored_actions = node.unexplored_actions(state.get_moves())
                 action = random.choice(unexplored_actions)
-                state = state.make_move(action)
+                state.make_move(action)
                 # expand for each player tree via the action in their perspective
                 for p in range(self.num_players):
                     observed_action = get_observed_action(p, action, state)
-                    if observed_action not in current_node(p).children:
-                        child = current_node(p).append_child(p, state.get_game_state(), observed_action)
+                    if observed_action.value not in current_node(p).children:
+                        child = current_node(p).append_child(p, state.player, observed_action)
                         d_forest[p].current_node = child
 
             # playout
             terminal_state = playout(state)
-
+            
             # backpropagation
             for p in range(self.num_players):
+                child_node = current_node(p).backpropagate(terminal_state)
+                d_forest[p].current_node = current_node(p).parent
+                
                 while (current_node(p) != None):   # backpropagate to root node
-                    current_node(p).parent.backpropagate(terminal_state, current_node(p))
+                    child_node = current_node(p).backpropagate(terminal_state, child_node)
                     d_forest[p].current_node = current_node(p).parent
+
+                d_forest[p].current_node = d_forest[p].root_node
 
         return max(current_node(self.player).children.values(), key=lambda c: c.visits)   
 
@@ -218,7 +196,7 @@ def select_from_forest(state, forest):
     return node
 
 
-def initialise_player_trees(num_players, starting_player):
+def initialise_player_trees(starting_player, num_players):
     if type(starting_player) == list:
         root_node = SimultaneousMoveNode(starting_player)
     else:
@@ -234,11 +212,11 @@ def initialise_player_trees(num_players, starting_player):
 def initialise_determinations(player, num_players):
     num_spies = Agent.spy_count[num_players]
     possible_spies = filter(lambda p: p != player, range(num_players))
-    spy_configurations = combinations(possible_spies, num_spies)
+    spy_configurations = list(combinations(possible_spies, num_spies))
     determinations = []
     probabilities = []
     for spies in spy_configurations:
-        d = [True if p in spies else False for p in range(num_players)]
+        d = tuple([True if p in spies else False for p in range(num_players)])
         p = 1 / len(spy_configurations)          # Equal probability to choose a determination
         determinations.append(d)
         probabilities.append(p)
@@ -273,3 +251,5 @@ def legal_action(determination):
 
 def normalise_probabilities(determinations):
     pass
+
+m = Monte('monte')
