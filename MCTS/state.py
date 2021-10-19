@@ -15,36 +15,6 @@ class StateNames():
 
 
 '''
-Stores all information pertaining to the state of the game at any point in time.
-'''
-class GameState():
-    def __init__(self, leader, player, state_name, rnd, missions_succeeded, mission=[], num_selection_fails=0):
-        self.leader = leader                                # Stores the player_id of the last leader (current leader if in SELECTION state)
-        self.player = player                                # Current player/players in the state. -1 for a terminal state.
-        self.state_name = state_name                        # Defines the current game state (SELECTION, VOTING, SABOTAGE or TERMINAL)
-        self.rnd = rnd
-        self.missions_succeeded = missions_succeeded
-        self.mission = mission                                
-        self.num_selection_fails = num_selection_fails      # Number of times a team has been rejected in the same round (max 5)  
-    
-    
-    def __eq__(self, other):
-        self.leader = other.leader
-        self.state_name = other.state_name and \
-        self.rnd == other.rnd and \
-        self.missions_succeeded == other.missions_succeed and \
-        self.num_selection_fails == other.num_selection_fails and \
-        self.mission == other.mission
-
-    
-    def __repr__(self):
-        s = f'game state = {self.state_name} |' + \
-            f' current player/s = {self.player} |' + \
-            f' R/S/F = {self.rnd}/{self.missions_succeeded}/{self.rnd - self.missions_succeeded} |' 
-        return s
-
-
-'''
 A class to encapsulate information relevant to an action
 '''
 class Action():
@@ -56,7 +26,6 @@ class Action():
         else: 
             self.is_simultaneous = False
         self.partially_observable = partially_observable
-    
 
     def __eq__(self, other):
         if self.type == other.type and self.type == StateNames.SABOTAGE:
@@ -73,9 +42,6 @@ class Action():
             return self.value == other.value
         return False
             
-                
-
-    
     def __repr__(self):
         return 'Action[' + str(self.value) + ']'
 
@@ -84,16 +50,17 @@ class Action():
 A class used to define a perfect information representation of a game state in 
 Avalon Resistance, including methods to get all moves and apply moves.
 '''
-class ResistanceState(GameState):
-    def __init__(self, determination, game_state):
-        self.leader = game_state.leader                             
-        self.player = game_state.player                                       
-        self.determination = determination                          # Array of booleans such that player 'p_id' is a spy if determination[p_id] = True
-        self.state_name = game_state.state_name                     
-        self.rnd = game_state.rnd       
-        self.missions_succeeded = game_state.missions_succeeded 
-        self.mission = game_state.mission                                
-        self.num_selection_fails = game_state.num_selection_fails             
+class ResistanceState():
+    def __init__(self, determination, leader, player, state_name, rnd, 
+        missions_succeeded, mission=[], num_selection_fails=0):
+        self.leader = leader                                    # Stores the player_id of the last leader (current leader if in SELECTION state)
+        self.player = player                                    # Current player/players in the state. -1 for a terminal state.  
+        self.determination = determination                      # Array of booleans such that player 'p_id' is a spy if determination[p_id] = True
+        self.state_name = state_name                            # Defines the current game state (SELECTION, VOTING, SABOTAGE or TERMINAL)
+        self.rnd = rnd       
+        self.missions_succeeded = missions_succeeded 
+        self.mission = mission                                
+        self.num_selection_fails = num_selection_fails          # Number of times a team has been rejected in the same round (max 5)  
 
 
     # Returns all possible actions from this state => A(state)
@@ -194,6 +161,8 @@ class ResistanceState(GameState):
         return score / 3        # reward from [0, 1, 4/3 5/3] depending on number of wins
 
     
-    def get_game_state(self):
-        return GameState(self.leader, self.player, self.state_name, self.rnd, self.missions_succeeded, 
-            self.mission, self.num_selection_fails)
+    def __repr__(self):
+        s = f'game state = {self.state_name} |' + \
+            f' current player/s = {self.player} |' + \
+            f' R/S/F = {self.rnd}/{self.missions_succeeded}/{self.rnd - self.missions_succeeded} |' 
+        return s
