@@ -18,30 +18,43 @@ class StateNames():
 A class to encapsulate information relevant to an action
 '''
 class Action():
-    def __init__(self, type, value, partially_observable):
-        self.type = type
+    def __init__(self, src_type, dst_type, value, partially_observable=False):
+        self.src_type = src_type
+        self.dst_type = dst_type
         self.value = value 
-        if type == StateNames.SABOTAGE or type == StateNames.VOTING:
+        self.is_simultaneous = False
+        if src_type == StateNames.SABOTAGE or src_type == StateNames.VOTING:
             self.is_simultaneous = True
-        else: 
-            self.is_simultaneous = False
         self.partially_observable = partially_observable
 
-    def __eq__(self, other):
-        if self.type == other.type and self.type == StateNames.SABOTAGE:
+
+    def equivalent_action(self, other):
+        same_action_type = self.src_type == other.src_type and self.dst_type == other.dst_type
+        if same_action_type and self.src_type == StateNames.SABOTAGE:
             if other.partially_observable:
                 other_num_sabotages = other.value[0]
             else:
-                other_num_sabotages = sum(zip(*other.value)[1])
+                other_num_sabotages = sum(list(zip(*other.value))[1])
             if self.partially_observable:
                 self_num_sabotages = self.value[0]
             else:
-                self_num_sabotages = sum(zip(*other.value)[1])
+                self_num_sabotages = sum(list(zip(*other.value))[1])
             return self_num_sabotages == other_num_sabotages
-        elif self.type == other.type:
+            
+        elif same_action_type:
             return self.value == other.value
         return False
-            
+
+
+    def __hash__(self):
+        return hash((self.src_type, self.dst_type, self.value))
+
+
+    def __eq__(self, other):
+        return (self.src_type, self.dst_type, self.value) == \
+               (other.src_type, other.dst_type, other.value)
+
+
     def __repr__(self):
         return 'Action[' + str(self.value) + ']'
 
@@ -71,21 +84,67 @@ class ResistanceState():
         if self.state_name == StateNames.SELECTION:
             mission_size = Agent.mission_sizes[num_players][self.rnd]
             possible_missions = combinations(range(num_players), mission_size) 
-            actions = [Action(StateNames.SELECTION, tuple(mission), False) for mission in possible_missions]
+            action_vals = [tuple(mission) for mission in possible_missions]
+            actions = [Action(src_type=StateNames.SELECTION, 
+                              dst_type=self.get_dst_state(StateNames.SELECTION, val), 
+                              value=val) 
+                        for val in action_vals]
             
         elif self.state_name == StateNames.VOTING:
             voting_combinations = product([False, True], repeat=num_players) 
-            actions = [Action(StateNames.VOTING, tuple(enumerate(votes)), False) for votes in voting_combinations]
+            action_vals = [tuple(enumerate(votes)) for votes in voting_combinations]
+            actions = [Action(src_type=StateNames.VOTING, 
+                              dst_type=self.get_dst_state(StateNames.VOTING, val), 
+                              value=val) 
+                        for val in action_vals]
 
         elif self.state_name == StateNames.SABOTAGE:
             spies = [p for p in range(num_players) if self.determination[p]]
             spies_in_mission = [p for p in self.mission if p in spies]
 
             sabotage_combinations = product((False, True), repeat=len(spies_in_mission))
-            sabotage_combinations = [zip(spies_in_mission, sabotages) for sabotages in sabotage_combinations]
-            actions = [Action(StateNames.SABOTAGE, tuple(sabotages), False) for sabotages in sabotage_combinations]
-
+            action_vals = [tuple(zip(spies_in_mission, sabotages)) for sabotages in sabotage_combinations]
+            actions = [Action(src_type=StateNames.SABOTAGE, 
+                              dst_type=self.get_dst_state(StateNames.SABOTAGE, val), 
+                              value=val) 
+                        for val in action_vals]
         return actions
+
+    
+    def get_dst_state(self, src_state, action_val):
+        rnd = self.rnd
+        dst_state = None
+        num_players = len(self.determination)
+        spies = [p for p in range(num_players) if self.determination[p]]
+
+        if src_state == StateNames.SELECTION:
+            dst_state = StateNames.VOTING                  
+
+        elif src_state == StateNames.VOTING:
+            spies_in_mission = tuple([p for p in self.mission if p in spies])
+            player_votes = action_val                       
+            votes = [vote for _, vote in player_votes]
+            num_votes_for = sum(votes)
+
+            if num_votes_for * 2 > len(votes):
+                if spies_in_mission:
+                    dst_state = StateNames.SABOTAGE
+                else:
+                    dst_state = StateNames.SELECTION
+                    rnd += 1
+
+            else:
+                dst_state = StateNames.SELECTION
+                if self.num_selection_fails >= 5:
+                    rnd += 1
+
+        elif src_state == StateNames.SABOTAGE:
+            dst_state = StateNames.SELECTION
+            rnd += 1
+        
+        if rnd > 4:
+            dst_state = StateNames.TERMINAL
+        return dst_state
 
     
     # Changes the game state object into a new state s' where s' = s(move)
@@ -93,12 +152,12 @@ class ResistanceState():
         num_players = len(self.determination)
         spies = [p for p in range(num_players) if self.determination[p]]
 
-        if action.type == StateNames.SELECTION:
+        if action.src_type == StateNames.SELECTION:
             self.state_name = StateNames.VOTING
             self.player = tuple(range(num_players))
             self.mission = action.value                         # Action is a list of player ids in the mission
 
-        elif action.type == StateNames.VOTING:
+        elif action.src_type == StateNames.VOTING:
             spies_in_mission = tuple([p for p in self.mission if p in spies])
             player_votes = action.value                         # Action has format ((p1, action1), (p2, action2), (p3, action3), ...)
             votes = [vote for _, vote in player_votes]
@@ -129,7 +188,7 @@ class ResistanceState():
                 self.num_selection_fails = 0
                 self.rnd += 1
 
-        elif action.type == StateNames.SABOTAGE:
+        elif action.src_type == StateNames.SABOTAGE:
             num_fails_required = Agent.fails_required[num_players][self.rnd]
             self.rnd += 1
             if action.partially_observable:
@@ -141,10 +200,9 @@ class ResistanceState():
             if num_sabotages < num_fails_required:
                 self.missions_succeeded += 1
 
-            else:
-                self.state_name = StateNames.SELECTION
-                self.leader = (self.leader + 1) % len(self.determination) 
-                self.player = self.leader
+            self.state_name = StateNames.SELECTION
+            self.leader = (self.leader + 1) % len(self.determination) 
+            self.player = self.leader
         
         if self.rnd > 4:
             self.state_name = StateNames.TERMINAL
