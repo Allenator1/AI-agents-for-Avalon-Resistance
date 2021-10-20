@@ -29,7 +29,6 @@ class Node:
            
 
     def ucb_selection(self, possible_actions, exploration):
-        possible_actions = [a.value for a in possible_actions]
         legal_children = [c for a, c in self.children.items() if a in possible_actions]
         ucb_eq = lambda c: c.reward / c.visits + exploration * sqrt(log(c.avails) / c.visits)
         
@@ -54,7 +53,7 @@ class Node:
         else:
             child_node = Node(next_player, self, action)
 
-        self.children[action.value] = child_node
+        self.children[action] = child_node
         return child_node
 
     
@@ -71,7 +70,7 @@ class Node:
 
 
     def unexplored_actions(self, possible_actions):
-        return [a for a in possible_actions if a.value not in self.children.keys()]
+        return [a for a in possible_actions if a not in self.children.keys()]
 
     
     def __repr__(self):
@@ -146,7 +145,10 @@ class SimultaneousMoveNode(Node):
 
             selected_action = max(actions, key=ucb_eq)
             joint_action.append((p, selected_action.value))
-        node = self.children[tuple(joint_action)]
+
+        joint_action, = [a for a in possible_actions if a.value == joint_action]
+        
+        node = self.children[joint_action]
         return node
 
     
@@ -168,7 +170,7 @@ class SimultaneousMoveNode(Node):
             child_node = SimultaneousMoveNode(player=next_player, parent=self, action=joint_action)
         else:
             child_node = Node(player=next_player, parent=self, action=joint_action)
-        self.children[joint_action.value] = child_node
+        self.children[joint_action] = child_node
         return child_node
 
     
