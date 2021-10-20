@@ -135,7 +135,11 @@ class SimultaneousMoveNode(Node):
 
     
     def ucb_selection(self, possible_actions, exploration):
-        joint_action = []
+        legal_children = [c for a, c in self.children.items() if a in possible_actions]
+        for child in legal_children:
+            child.avails += 1
+
+        joint_action = []    
         for p, actions in self.player_actions.items():
 
             ucb_eq = lambda a: a.reward / a.visits + exploration * sqrt(log(a.avails) / a.visits)
