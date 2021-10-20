@@ -14,6 +14,34 @@ class StateNames():
     TERMINAL = 'GAME END'          
 
 
+class StateInfo():
+    def __init__(self, leader, player, state_name, rnd, missions_succeeded, mission, num_selection_fails):
+        self.leader = leader                                    # Stores the player_id of the last leader (current leader if in SELECTION state)
+        self.player = player                                    # Current player/players in the state. -1 for a terminal state.  
+        self.state_name = state_name                            # Defines the current game state (SELECTION, VOTING, SABOTAGE or TERMINAL)
+        self.rnd = rnd       
+        self.missions_succeeded = missions_succeeded 
+        self.mission = mission                                
+        self.num_selection_fails = num_selection_fails          # Number of times a team has been rejected in the same round
+
+
+    def __repr__(self):
+        s = f'game state = {self.state_name} |' + \
+            f' current player/s = {self.player} |' + \
+            f' R/S/F = {self.rnd}/{self.missions_succeeded}/{self.rnd - self.missions_succeeded} |' 
+        return s
+
+    
+    def __eq__(self, other):
+        return  self.leader == other.leader and \
+                self.player == other.player and \
+                self.state_name == other.state_name and \
+                self.rnd == other.rnd and \
+                self.missions_succeeded == other.missions_succeeded and \
+                self.mission == other.mission and \
+                self.num_selection_fails == other.num_selection_fails
+
+
 '''
 A class to encapsulate information relevant to an action
 '''
@@ -28,7 +56,7 @@ class Action():
         self.partially_observable = partially_observable
 
 
-    def equivalent_action(self, other):
+    def equivalent(self, other):
         same_action_type = self.src_type == other.src_type and self.dst_type == other.dst_type
         if same_action_type and self.src_type == StateNames.SABOTAGE:
             if other.partially_observable:
@@ -63,7 +91,7 @@ class Action():
 A class used to define a perfect information representation of a game state in 
 Avalon Resistance, including methods to get all moves and apply moves.
 '''
-class ResistanceState():
+class ResistanceState(StateInfo):
     def __init__(self, determination, leader, player, state_name, rnd, 
         missions_succeeded, mission=[], num_selection_fails=0):
         self.leader = leader                                    # Stores the player_id of the last leader (current leader if in SELECTION state)
@@ -110,7 +138,7 @@ class ResistanceState():
                         for val in action_vals]
         return actions
 
-    
+
     def get_dst_state(self, src_state, action_val):
         rnd = self.rnd
         dst_state = None
@@ -144,9 +172,9 @@ class ResistanceState():
         
         if rnd > 4:
             dst_state = StateNames.TERMINAL
-        return dst_state
+        return dst_state 
 
-    
+
     # Changes the game state object into a new state s' where s' = s(move)
     def make_move(self, action):
         num_players = len(self.determination)
@@ -219,8 +247,6 @@ class ResistanceState():
         return score / 3        # reward from [0, 1, 4/3 5/3] depending on number of wins
 
     
-    def __repr__(self):
-        s = f'game state = {self.state_name} |' + \
-            f' current player/s = {self.player} |' + \
-            f' R/S/F = {self.rnd}/{self.missions_succeeded}/{self.rnd - self.missions_succeeded} |' 
-        return s
+    def get_state_info(self):
+        return StateInfo(self.leader, self.player, self.state_name, self.rnd,
+            self.missions_succeeded, self.mission, self.num_selection_fails)
