@@ -16,6 +16,8 @@ tree.py                                  ---tree_representation---
 > require tree.py model.py decision_tree_agent.py in the same directory 
 > from decision_tree_agent import DecisionTreeAgent
 
+3. Perform test with random agents
+> python3 test.py
 
 # Wiki
 **Tree.py**
