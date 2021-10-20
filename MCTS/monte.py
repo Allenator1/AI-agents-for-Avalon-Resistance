@@ -1,7 +1,7 @@
 import random
 from copy import deepcopy, copy
 from itertools import combinations
-from MCTS.state import ResistanceState, StateNames, Roles
+from MCTS.state import StateNames, Roles, Action, StateInfo, ResistanceState
 from MCTS.node import Node, SimultaneousMoveNode, PlayerTree
 from agent import Agent
 
@@ -28,7 +28,10 @@ class Monte(Agent):
         self.mission=[]
         self.num_selection_fails=0
 
-        self.forest = initialise_player_trees(self.player, self.num_players)
+        state_info = StateInfo(self.leader, self.player, self.state_name, self.rnd, self.missions_succeeded,
+            self.mission, self.num_selection_fails)
+
+        self.forest = initialise_player_trees(self.player, state_info, self.num_players)
 
         selected_node = self.inference_ISMCTS(NUM_ITERATIONS)
 
@@ -138,22 +141,22 @@ class Monte(Agent):
             
             # extracting the trees where player roles are compatible with the current determination, producing a single tree for each player
             d_forest = [self.forest[p][determination[p]] for p in range(self.num_players)] 
-            d_tree = lambda p: d_forest[p].current_node         # Obtains the current node of the tree rooted at determination d for player p
-            all_trees = lambda p: self.forest[p].items()        # Obtains all trees for player p (1 for each role they may take)
+            # Returns all trees for player p (1 for each role they may take)
+            all_trees = lambda p: self.forest[p].items() 
 
             # selection
-            node = select_from_forest(state, d_forest)
+            node = select_from_trees(state, d_forest)
             while state.get_moves() != [] and node.unexplored_actions(state.get_moves()) == []: 
                 node = node.ucb_selection(state.get_moves(), 0.7)
 
                 # tree descent for other player trees
                 for p in range(self.num_players):
                     for _, tree in all_trees(p):
-                        children = tree.current_node.children.values()
-                        tree.current_node, = [c for c in children if c.action == node.action]
+                        children = tree.current_node.children
+                        tree.current_node, = [c for c in children.values() if c.state_info == node.state_info and c.action == node.action]
 
                 state.make_move(node.action)
-                node = select_from_forest(state, d_forest)
+                node = select_from_trees(state, d_forest)
 
             # expansion
             if state.get_moves() != []:    # if node is non-terminal
@@ -170,24 +173,25 @@ class Monte(Agent):
             
             # backpropagation
             for p in range(self.num_players):
-                child = d_tree(p).backpropagate(terminal_state)
-                d_forest[p].current_node = d_tree(p).parent
-                
-                while (d_tree(p) != None):   # backpropagate to root node
-                    child = d_tree(p).backpropagate(terminal_state, child)
-                    d_forest[p].current_node = d_tree(p).parent
+                for _, tree in all_trees(p):
+                    child = tree.current_node.backpropagate(terminal_state)
+                    tree.current_node = tree.current_node.parent
+                    
+                    while (tree.current_node != None):   # backpropagate to root node
+                        child = tree.current_node.backpropagate(terminal_state, child)
+                        tree.current_node = tree.current_node.parent
 
             # reset tree iteration position
             for p in range(self.num_players):
                 for _, tree in all_trees(p):
                     tree.current_node = tree.root_node
 
-        return max(d_tree(self.player).children.values(), key=lambda c: c.visits)   
+        return max(d_forest[self.player].current_node.children.values(), key=lambda c: c.visits)   
 
 
 def expansion(tree, observer_is_spy, action, new_state):
     observed_action = get_observed_action(observer_is_spy, new_state, action)
-    if observed_action.value not in tree.current_node.children:
+    if observed_action not in tree.current_node.children:
         child = tree.current_node.append_child(observer_is_spy, new_state, observed_action)
         tree.current_node = child
 
@@ -198,7 +202,7 @@ def playout(state):
     return state       
 
 
-def select_from_forest(state, forest):
+def select_from_trees(state, forest):
     player = state.player
     if type(player) == int:                       # SELECTION node
         node = forest[player].current_node
@@ -207,11 +211,11 @@ def select_from_forest(state, forest):
     return node
 
 
-def initialise_player_trees(starting_player, num_players):
+def initialise_player_trees(starting_player, state_info, num_players):
     if type(starting_player) == list:
-        root_node = SimultaneousMoveNode(starting_player)
+        root_node = SimultaneousMoveNode(starting_player, state_info)
     else:
-        root_node = Node(starting_player)
+        root_node = Node(starting_player, state_info)
 
     monte_carlo_forest = [{} for _ in range(num_players)]
     for p in range(num_players):
@@ -235,9 +239,13 @@ def initialise_determinations(player, num_players):
 
 
 def get_observed_action(observer_is_spy, next_state, action):
-    if not observer_is_spy and action.type == StateNames.SABOTAGE:  
+    if not observer_is_spy and action.src_type == StateNames.SABOTAGE:  
         betrays = [betrayed for _, betrayed in action.value]
-        observed_action = (sum(betrays), next_state.mission)
+        observed_action_val = (sum(betrays), next_state.mission)
+        observed_action = Action(StateNames.SABOTAGE, 
+                                next_state.state_name,
+                                observed_action_val, 
+                                partially_observable=True)
     else:
         observed_action = action
     return observed_action
