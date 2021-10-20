@@ -153,7 +153,7 @@ class Monte(Agent):
                 for p in range(self.num_players):
                     for _, tree in all_trees(p):
                         children = tree.current_node.children
-                        tree.current_node, = [c for c in children.values() if c.state_info == node.state_info and c.action == node.action]
+                        tree.current_node, = [c for c in children.values() if c.state_info == node.state_info and c.action.equivalent(node.action)]
 
                 state.make_move(node.action)
                 node = select_from_trees(state, d_forest)
@@ -162,11 +162,12 @@ class Monte(Agent):
             if state.get_moves() != []:    # if node is non-terminal
                 unexplored_actions = node.unexplored_actions(state.get_moves())
                 action = random.choice(unexplored_actions)
+                prev_state = deepcopy(state)
                 state.make_move(action)
                 # expand for each player tree via the action in their perspective
                 for p in range(self.num_players):
                     for observer_is_spy, tree in all_trees(p):
-                        expansion(tree, observer_is_spy, action, state)
+                        expansion(tree, observer_is_spy, prev_state, state, action)
 
             # playout
             terminal_state = playout(state)
@@ -189,10 +190,10 @@ class Monte(Agent):
         return max(d_forest[self.player].current_node.children.values(), key=lambda c: c.visits)   
 
 
-def expansion(tree, observer_is_spy, action, new_state):
-    observed_action = get_observed_action(observer_is_spy, new_state, action)
+def expansion(tree, observer_is_spy, current_state, next_state, action):
+    observed_action = get_observed_action(observer_is_spy, current_state, action)
     if observed_action not in tree.current_node.children:
-        child = tree.current_node.append_child(observer_is_spy, new_state, observed_action)
+        child = tree.current_node.append_child(observer_is_spy, next_state, observed_action)
         tree.current_node = child
 
 
@@ -238,14 +239,11 @@ def initialise_determinations(player, num_players):
     return determinations, probabilities
 
 
-def get_observed_action(observer_is_spy, next_state, action):
-    if not observer_is_spy and action.src_type == StateNames.SABOTAGE:  
+def get_observed_action(observer_is_spy, current_state, action):
+    if not observer_is_spy and current_state.state_name == StateNames.SABOTAGE:  
         betrays = [betrayed for _, betrayed in action.value]
-        observed_action_val = (sum(betrays), next_state.mission)
-        observed_action = Action(StateNames.SABOTAGE, 
-                                next_state.state_name,
-                                observed_action_val, 
-                                partially_observable=True)
+        observed_action_val = (sum(betrays), current_state.mission)
+        observed_action = current_state.generate_action(StateNames.SABOTAGE, observed_action_val, True)
     else:
         observed_action = action
     return observed_action
