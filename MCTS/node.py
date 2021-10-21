@@ -2,24 +2,13 @@ from math import sqrt, log
 from MCTS.state import StateNames
 
 
-class PlayerTree:
-    def __init__(self, player, state_info, parent=None, action=None):
-        root_node = Node(player, state_info, parent, action)
-        self.root_node = root_node
-        self.current_node = root_node
-
-    def __repr__(self):
-        return f'Root node: {str(self.root_node)} | Current node: {str(self.current_node)}'
-
-
 '''
 A class used to define nodes in the Monte Carlo tree, including methods
 used for node expansion, selection and backpropagation.
 '''
 class Node:
-    def __init__(self, player, state_info, parent=None, action=None):     
-        self.player = player                # Player id for the player that this node belongs to
-        self.state_info = state_info        # Information regarding the current game state
+    def __init__(self, num_players, player, parent=None, action=None):     
+        self.player = player                # Player id for the player about to move
         self.parent = parent                # None if root state
         self.action = action                # Action that parent took to lead to this node. None if root state.
         self.reward = 0                     # MCTS reward during backpropagation
@@ -27,7 +16,6 @@ class Node:
         self.avails = 0                     # Number of times parent has been visited during backpropagation
         self.determination_visits = {}      # Number of visits for each determination during backpropagation - format is {determination: visits, ...}
         self.children = {}                  # {action: childnode, ...}
-           
 
     def ucb_selection(self, possible_actions, exploration):
         legal_children = [c for a, c in self.children.items() if a in possible_actions]
@@ -41,20 +29,20 @@ class Node:
         return node
 
 
-    def append_child(self, next_state, action):
-        # does the next state produce partially observable moves in the perspective of the observer.
-
-        if type(next_state.player) == tuple:
-            child_node = SimultaneousMoveNode(next_state.player, next_state.get_state_info(), self, action)
+    def append_child(self, next_player, action):
+        if type(next_player) == tuple:
+            child_node = SimultaneousMoveNode(next_player, self, action)
         else:
-            child_node = Node(next_state.player, next_state.get_state_info(), self, action)
+            child_node = Node(next_player, self, action)
 
         self.children[action] = child_node
         return child_node
 
     
     def backpropagate(self, terminal_state, child_node=None):
-        self.reward += terminal_state.game_result(self.player)
+        player_just_moved = self.parent.player
+        if type(player_just_moved) == int:
+            self.reward += terminal_state.game_result(player_just_moved)
         
         d = terminal_state.determination
         if d not in self.determination_visits:
@@ -110,9 +98,8 @@ The selection process uses Decoupled UCT Selection (DUCT) to choose a child node
 over each player's possible actions and constructs an optimal 'joint action', through which a child node is chosen.
 '''
 class SimultaneousMoveNode(Node):
-    def __init__(self, player, state_info, parent=None, action=None):
-        self.player = player
-        self.state_info = state_info                
+    def __init__(self, num_players, player, parent=None, action=None):
+        self.player = player             
         self.parent = parent
         self.action = action
         self.reward = 0
@@ -144,7 +131,7 @@ class SimultaneousMoveNode(Node):
         return node
 
     
-    def append_child(self, next_state, joint_action):
+    def append_child(self, next_player, joint_action):
         for p, action in joint_action.value:
             if p not in self.player_actions:
                 self.player_actions[p] = []
@@ -153,10 +140,10 @@ class SimultaneousMoveNode(Node):
                 self.player_actions[p].append(ActionNode(parent=self, player=p, value=action))
 
 
-        if type(next_state.player) == tuple:
-            child_node = SimultaneousMoveNode(next_state.player, next_state.get_state_info(), self, joint_action)
+        if type(next_player) == tuple:
+            child_node = SimultaneousMoveNode(next_player, self, joint_action)
         else:
-            child_node = Node(next_state.player, next_state.get_state_info(), self, joint_action)
+            child_node = Node(next_player, self, joint_action)
         
         self.children[joint_action] = child_node
         return child_node
@@ -173,7 +160,10 @@ class SimultaneousMoveNode(Node):
         d = terminal_state.determination
         if d not in self.determination_visits:
             self.determination_visits[d] = 0
-
+        
+        player_just_moved = self.parent.player
+        if type(player_just_moved) == int:
+            self.reward += terminal_state.game_result(player_just_moved)
         self.visits += 1 
         self.determination_visits[terminal_state.determination] += 1
         return self
