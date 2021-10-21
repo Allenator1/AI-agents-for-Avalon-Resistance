@@ -2,11 +2,13 @@ import random
 import time
 from copy import deepcopy, copy
 from itertools import combinations
-from MCTS.state import StateNames, ResistanceState
+from MCTS.state import StateNames, ResistanceState, get_actions_time
 from MCTS.node import Node
 from agent import Agent
 
+
 NUM_ITERATIONS = 1000
+INITIAL_TEMPATURE = 1
 
 class Monte(Agent):
 
@@ -31,10 +33,7 @@ class Monte(Agent):
 
 
         self.root_node = Node(self.player)
-        t1 = time.time()
         selected_action = self.ISMCTS(NUM_ITERATIONS)
-        print(time.time() - t1)
-        print(selected_action)
 
 
     def __str__(self):
@@ -134,43 +133,65 @@ class Monte(Agent):
 
 
     def ISMCTS(self, itermax):
+        total_times = {'selection':0, 'expansion':0, 'playout':0, 'backpropagation':0}
         for i in range(itermax):
-            print(i)
             # determinize
             determination = random.choice(self.determinations)
             state = ResistanceState(determination, self.leader, self.player, self.state_name, self.rnd,
                 self.missions_succeeded, self.mission, self.num_selection_fails)
 
+            temperature = min(0.7, (1 - (i + 1) / itermax))
+
+            t1 = time.time()
             # selection
             node = self.root_node
-            while state.get_moves() != [] and node.unexplored_actions(state.get_moves()) == []: 
-                node = node.ucb_selection(state.get_moves(), 0.7)
+            moves = state.get_moves()
+            while moves != [] and node.unexplored_actions(moves) == []: 
+                node = node.ucb_selection(moves, temperature)
                 state.make_move(node.action)
+                moves = state.get_moves()
+            t2 = time.time()
+            total_times['selection'] += t2 - t1
 
             # expansion
-            if state.get_moves() != []:    # if node is non-terminal
-                unexplored_actions = node.unexplored_actions(state.get_moves())
+            if moves != []:    # if node is non-terminal
+                unexplored_actions = node.unexplored_actions(moves)
                 action = random.choice(unexplored_actions)
                 state.make_move(action)
                 node = node.append_child(state.player, action)
+            t3 = time.time()
+            total_times['expansion'] += t3 - t2
 
             # playout
             terminal_state = playout(state)
+            t4 = time.time()
+            total_times['playout'] += t4 - t3
             
             # backpropagation
             child = node.backpropagate(terminal_state)
             while (node != self.root_node):   # backpropagate to root node
                 node = node.parent
                 child = node.backpropagate(terminal_state, child)
-            
+            t5 = time.time()
+            total_times['backpropagation'] += t5 - t4
         
-        print(self.root_node.stringify_tree(4))
+        print('Time distribution between sections of ISMCTS functions')    
+        for k, v in total_times.items():
+            print(f'{k}: {v}')
+        print('\n')
+
+        print('Time distribution between sections of get_actions function')    
+        for k, v in get_actions_time.items():
+            print(f'{k}: {v}')
+
         return max(self.root_node.children.values(), key=lambda c: c.visits).action   
 
 
 def playout(state):
-    while state.get_moves() != []:
-        state.make_move(random.choice(state.get_moves()))
+    moves = state.get_moves()
+    while moves != []:
+        state.make_move(random.choice(moves))
+        moves = state.get_moves()
     return state       
 
 

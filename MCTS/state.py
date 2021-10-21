@@ -1,6 +1,8 @@
 from agent import Agent
 from itertools import combinations, product
+import time
 
+get_actions_time = {'selection':0, 'voting':0, 'sabotage':0}
 
 class Roles():
     SPY = 'SPY'
@@ -63,16 +65,19 @@ class ResistanceState():
         actions = []
         num_players = len(self.determination)
 
+        t1 = time.time()
         if self.state_name == StateNames.SELECTION:
             mission_size = Agent.mission_sizes[num_players][self.rnd]
             possible_missions = combinations(range(num_players), mission_size) 
             action_vals = [tuple(mission) for mission in possible_missions]
             actions = [self.generate_action(StateNames.SELECTION, val) for val in action_vals]
-            
+            get_actions_time['selection'] += time.time() - t1
+        
         elif self.state_name == StateNames.VOTING:
             voting_combinations = product([False, True], repeat=num_players) 
             action_vals = [tuple(enumerate(votes)) for votes in voting_combinations]
             actions = [self.generate_action(StateNames.VOTING, val) for val in action_vals]
+            get_actions_time['voting'] += time.time() - t1
 
         elif self.state_name == StateNames.SABOTAGE:
             spies = [p for p in range(num_players) if self.determination[p]]
@@ -81,6 +86,7 @@ class ResistanceState():
             sabotage_combinations = product((False, True), repeat=len(spies_in_mission))
             action_vals = [tuple(zip(spies_in_mission, sabotages)) for sabotages in sabotage_combinations]
             actions = [self.generate_action(StateNames.SABOTAGE, val) for val in action_vals]
+            get_actions_time['sabotage'] += time.time() - t1
         return actions
 
 
