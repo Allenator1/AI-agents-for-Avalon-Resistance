@@ -75,19 +75,19 @@ class Node:
         )
 
 
-    def stringify_tree(self, indent):
+    def stringify_tree(self, indent, spaces):
         """ Represent the tree as a string, for debugging purposes.
         """
-        s = self.indent_string(indent) + str(self)
+        s = self.indent_string(indent, spaces) + str(self)
         for c in self.children.values():
-            s += c.stringify_tree(indent + 1)
+            s += c.stringify_tree(indent + 1, spaces)
         return s
 
 
-    def indent_string(self, indent):
+    def indent_string(self, indent, spaces):
         s = "\n"
         for i in range(1, indent + 1):
-            s += "| "
+            s += "|" + ' ' * spaces
         return s
 
 
@@ -109,37 +109,35 @@ class SimultaneousMoveNode(Node):
         self.player_actions = {}            # {player_id: [action_node, ...], ...}
         self.children = {}                  # {joint_action: childnode, ...}
 
+        self.initialise_action_nodes()
+
+    
+    def initialise_action_nodes(self):
+        for p in self.player:
+            self.player_actions[p] = []
+            self.player_actions[p].append(ActionNode(p, self, True))
+            self.player_actions[p].append(ActionNode(p, self, False))
+
     
     def ucb_selection(self, possible_actions, exploration):
         legal_children = [c for a, c in self.children.items() if a in possible_actions]
         for child in legal_children:
             child.avails += 1
 
-        joint_action = []    
-        for p, actions in self.player_actions.items():
-            ucb_eq = lambda a: a.reward / a.visits + exploration * sqrt(log(a.avails) / a.visits)
-            
-            for action in actions:
-                action.avails += 1
+        joint_action_val = 0
+        for actions in self.player_actions.values():
+            ucb_eq = lambda a: a.reward / a.visits + exploration * sqrt(log(self.visits) / a.visits)
 
             selected_action = max(actions, key=ucb_eq)
-            joint_action.append((p, selected_action.value))
+            joint_action_val += selected_action.value
 
-        joint_action, = [a for a in possible_actions if a.value == tuple(joint_action)]
+        joint_action, = [a for a in possible_actions if a.value == joint_action_val]
         
         node = self.children[joint_action]
         return node
 
     
     def append_child(self, next_player, joint_action):
-        for p, action in joint_action.value:
-            if p not in self.player_actions:
-                self.player_actions[p] = []
-            explored_actions = [a.value for a in self.player_actions[p]]
-            if action not in explored_actions:
-                self.player_actions[p].append(ActionNode(parent=self, player=p, value=action))
-
-
         if type(next_player) == tuple:
             child_node = SimultaneousMoveNode(next_player, self, joint_action)
         else:
@@ -150,12 +148,11 @@ class SimultaneousMoveNode(Node):
 
     
     def backpropagate(self, terminal_state, child_node=None):
-        if child_node:
-            joint_action = child_node.action
-            for p, action in joint_action.value:
-                backpropagated_action, = [node for node in self.player_actions[p] if node.value == action]
-                backpropagated_action.reward += terminal_state.game_result(p)
-                backpropagated_action.visits += 1
+        for p in self.player:
+            for action_node in self.player_actions[p]:
+                if action_node.value == True:
+                    action_node.reward += terminal_state.game_result(p)
+                action_node.visits += 1
 
         d = terminal_state.determination
         if d not in self.determination_visits:
@@ -188,7 +185,6 @@ class ActionNode():
         self.value = value                    # action is either True or False (e.g., a player voted True)                
         self.reward = 0
         self.visits = 0
-        self.avails = 0
 
 
     def __repr__(self):

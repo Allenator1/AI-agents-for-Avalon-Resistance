@@ -7,8 +7,7 @@ from MCTS.node import Node
 from agent import Agent
 
 
-NUM_ITERATIONS = 1000
-INITIAL_TEMPATURE = 1
+MAX_TIME = 0.35
 
 class Monte(Agent):
 
@@ -33,7 +32,7 @@ class Monte(Agent):
 
 
         self.root_node = Node(self.player)
-        selected_action = self.ISMCTS(NUM_ITERATIONS)
+        selected_node = self.ISMCTS(MAX_TIME)
 
 
     def __str__(self):
@@ -132,26 +131,24 @@ class Monte(Agent):
         pass
 
 
-    def ISMCTS(self, itermax):
-        total_times = {'selection':0, 'expansion':0, 'playout':0, 'backpropagation':0}
-        for i in range(itermax):
+    def ISMCTS(self, max_time):
+        start_time = time.time()
+        time_diff = 0
+        while (time_diff < max_time):
             # determinize
             determination = random.choice(self.determinations)
             state = ResistanceState(determination, self.leader, self.player, self.state_name, self.rnd,
                 self.missions_succeeded, self.mission, self.num_selection_fails)
 
-            temperature = min(0.7, (1 - (i + 1) / itermax))
+            temperature = min(0.9, (1 - time_diff / max_time))
 
-            t1 = time.time()
             # selection
             node = self.root_node
             moves = state.get_moves()
             while moves != [] and node.unexplored_actions(moves) == []: 
-                node = node.ucb_selection(moves, temperature)
+                node = node.ucb_selection(moves, 0.7)
                 state.make_move(node.action)
                 moves = state.get_moves()
-            t2 = time.time()
-            total_times['selection'] += t2 - t1
 
             # expansion
             if moves != []:    # if node is non-terminal
@@ -159,32 +156,19 @@ class Monte(Agent):
                 action = random.choice(unexplored_actions)
                 state.make_move(action)
                 node = node.append_child(state.player, action)
-            t3 = time.time()
-            total_times['expansion'] += t3 - t2
 
             # playout
             terminal_state = playout(state)
-            t4 = time.time()
-            total_times['playout'] += t4 - t3
             
             # backpropagation
             child = node.backpropagate(terminal_state)
             while (node != self.root_node):   # backpropagate to root node
                 node = node.parent
                 child = node.backpropagate(terminal_state, child)
-            t5 = time.time()
-            total_times['backpropagation'] += t5 - t4
-        
-        print('Time distribution between sections of ISMCTS functions')    
-        for k, v in total_times.items():
-            print(f'{k}: {v}')
-        print('\n')
+            time_diff = time.time() - start_time
 
-        print('Time distribution between sections of get_actions function')    
-        for k, v in get_actions_time.items():
-            print(f'{k}: {v}')
-
-        return max(self.root_node.children.values(), key=lambda c: c.visits).action   
+        print(self.root_node.stringify_tree(5, 2))
+        return max(self.root_node.children.values(), key=lambda c: c.visits) 
 
 
 def playout(state):

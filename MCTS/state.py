@@ -1,8 +1,6 @@
 from agent import Agent
-from itertools import combinations, product
-import time
+from itertools import combinations
 
-get_actions_time = {'selection':0, 'voting':0, 'sabotage':0}
 
 class Roles():
     SPY = 'SPY'
@@ -65,28 +63,22 @@ class ResistanceState():
         actions = []
         num_players = len(self.determination)
 
-        t1 = time.time()
         if self.state_name == StateNames.SELECTION:
             mission_size = Agent.mission_sizes[num_players][self.rnd]
             possible_missions = combinations(range(num_players), mission_size) 
             action_vals = [tuple(mission) for mission in possible_missions]
             actions = [self.generate_action(StateNames.SELECTION, val) for val in action_vals]
-            get_actions_time['selection'] += time.time() - t1
         
         elif self.state_name == StateNames.VOTING:
-            voting_combinations = product([False, True], repeat=num_players) 
-            action_vals = [tuple(enumerate(votes)) for votes in voting_combinations]
+            action_vals = range(num_players + 1)
             actions = [self.generate_action(StateNames.VOTING, val) for val in action_vals]
-            get_actions_time['voting'] += time.time() - t1
 
         elif self.state_name == StateNames.SABOTAGE:
             spies = [p for p in range(num_players) if self.determination[p]]
             spies_in_mission = [p for p in self.mission if p in spies]
 
-            sabotage_combinations = product((False, True), repeat=len(spies_in_mission))
-            action_vals = [tuple(zip(spies_in_mission, sabotages)) for sabotages in sabotage_combinations]
+            action_vals = range(len(spies_in_mission) + 1)
             actions = [self.generate_action(StateNames.SABOTAGE, val) for val in action_vals]
-            get_actions_time['sabotage'] += time.time() - t1
         return actions
 
 
@@ -102,12 +94,10 @@ class ResistanceState():
             player = tuple(range(num_players))                
 
         elif src_state == StateNames.VOTING:
-            spies_in_mission = tuple([p for p in self.mission if p in spies])
-            player_votes = action_val                       
-            votes = [vote for _, vote in player_votes]
-            num_votes_for = sum(votes)
+            spies_in_mission = tuple([p for p in self.mission if p in spies])                     
+            num_votes_for = action_val  
 
-            if num_votes_for * 2 > len(votes):
+            if num_votes_for * 2 > num_players:
                 if spies_in_mission:
                     dst_state = StateNames.SABOTAGE
                     player = spies_in_mission
@@ -145,12 +135,10 @@ class ResistanceState():
             self.mission = action.value                         # Action is a list of player ids in the mission
 
         elif action.src_type == StateNames.VOTING:
-            spies_in_mission = tuple([p for p in self.mission if p in spies])
-            player_votes = action.value                         # Action has format ((p1, action1), (p2, action2), (p3, action3), ...)
-            votes = [vote for _, vote in player_votes]
-            num_votes_for = sum(votes)
+            spies_in_mission = tuple([p for p in self.mission if p in spies])                      # Action has format ((p1, action1), (p2, action2), (p3, action3), ...)
+            num_votes_for = action.value   
 
-            if num_votes_for * 2 > len(votes):
+            if num_votes_for * 2 > num_players:
                 if spies_in_mission:
                     self.state_name = StateNames.SABOTAGE
                     self.player = spies_in_mission
@@ -178,8 +166,7 @@ class ResistanceState():
         elif action.src_type == StateNames.SABOTAGE:
             num_fails_required = Agent.fails_required[num_players][self.rnd]
             self.rnd += 1
-            _, sabotages = zip(*action.value)               # Action has format [(spy1, action1), (spy2, action2), ...]
-            num_sabotages = sum(sabotages)
+            num_sabotages = action.value
 
             if num_sabotages < num_fails_required:
                 self.missions_succeeded += 1
@@ -199,7 +186,7 @@ class ResistanceState():
             score = num_fails - self.missions_succeeded
         else:
             score = self.missions_succeeded - num_fails
-        return score    # rewards from [-5, -3, -1, 1, 3, 5]        
+        return score / 2    # rewards from [-2.5, -1.5, -0.5, 0.5, 1.5, 2.5]        
 
     
     def __repr__(self):
