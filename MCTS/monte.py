@@ -30,7 +30,7 @@ class Monte(Agent):
         self.num_selection_fails=0
 
 
-        self.root_node = Node(self.num_players, self.player)
+        self.root_node = Node(self.player)
         t1 = time.time()
         selected_action = self.ISMCTS(NUM_ITERATIONS)
         print(time.time() - t1)

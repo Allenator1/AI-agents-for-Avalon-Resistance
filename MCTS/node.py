@@ -7,7 +7,7 @@ A class used to define nodes in the Monte Carlo tree, including methods
 used for node expansion, selection and backpropagation.
 '''
 class Node:
-    def __init__(self, num_players, player, parent=None, action=None):     
+    def __init__(self, player, parent=None, action=None):     
         self.player = player                # Player id for the player about to move
         self.parent = parent                # None if root state
         self.action = action                # Action that parent took to lead to this node. None if root state.
@@ -40,7 +40,7 @@ class Node:
 
     
     def backpropagate(self, terminal_state, child_node=None):
-        player_just_moved = self.parent.player
+        player_just_moved = None if self.parent is None else self.parent.player
         if type(player_just_moved) == int:
             self.reward += terminal_state.game_result(player_just_moved)
         
@@ -98,7 +98,7 @@ The selection process uses Decoupled UCT Selection (DUCT) to choose a child node
 over each player's possible actions and constructs an optimal 'joint action', through which a child node is chosen.
 '''
 class SimultaneousMoveNode(Node):
-    def __init__(self, num_players, player, parent=None, action=None):
+    def __init__(self, player, parent=None, action=None):
         self.player = player             
         self.parent = parent
         self.action = action
@@ -161,7 +161,7 @@ class SimultaneousMoveNode(Node):
         if d not in self.determination_visits:
             self.determination_visits[d] = 0
         
-        player_just_moved = self.parent.player
+        player_just_moved = None if self.parent is None else self.parent.player
         if type(player_just_moved) == int:
             self.reward += terminal_state.game_result(player_just_moved)
         self.visits += 1 
