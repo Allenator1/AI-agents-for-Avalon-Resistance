@@ -59,7 +59,7 @@ class DecisionTreeAgent(Agent):
                         score = 1000
                         least_suspicious_spy = None
                         for spy in self.states.spys:
-                            if self.states.expose[spy] < score:
+                            if self.states.expose[spy] < score and spy not in team:
                                 score = self.states.expose[spy]
                                 least_suspicious_spy = spy
                         team.append(least_suspicious_spy)
@@ -68,7 +68,7 @@ class DecisionTreeAgent(Agent):
                         score = -1000
                         most_suspicious_spy = None
                         for spy in self.states.spys:
-                            if self.states.expose[spy] > score:
+                            if self.states.expose[spy] > score and spy not in team:
                                 score = self.states.expose[spy]
                                 most_suspicious_spy = spy
                         team.append(most_suspicious_spy)
