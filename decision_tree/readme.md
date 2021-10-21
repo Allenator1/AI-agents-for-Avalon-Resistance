@@ -6,6 +6,7 @@ myagent.py                               ---training---
 model.py                                 ---state---
 train.py                                 ---training---          
 tree.py                                  ---tree_representation---
+test.py                                  ---test_against_random---
 ```
 
 ## Useage
@@ -127,3 +128,9 @@ tree.py                                  ---tree_representation---
 - ***generate_end_tree***
     - Runs finite iterations of check converge and calculates the average converge rate
     - returns the best tree encountered in all iterations
+
+**test.py**
+- Evaluate the effectiveness of the decision tree agent
+- Plays *total round* number of games with 6 intervals
+- Each interval the proportion of decision tree vs random agent changes
+- Final winrate data will be displayed
