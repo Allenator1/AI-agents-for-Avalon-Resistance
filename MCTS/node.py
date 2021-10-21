@@ -126,7 +126,8 @@ class SimultaneousMoveNode(Node):
 
         joint_action_val = 0
         for actions in self.player_actions.values():
-            ucb_eq = lambda a: a.reward / a.visits + exploration * sqrt(log(self.visits) / a.visits)
+            ucb_eq = lambda a: 0 if a.visits == 0 else \
+                a.reward / a.visits + exploration * sqrt(log(self.visits) / a.visits)
 
             selected_action = max(actions, key=ucb_eq)
             joint_action_val += selected_action.value
