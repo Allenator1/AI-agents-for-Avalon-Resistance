@@ -14,34 +14,6 @@ class StateNames():
     TERMINAL = 'GAME END'          
 
 
-class StateInfo():
-    def __init__(self, leader, player, state_name, rnd, missions_succeeded, mission, num_selection_fails):
-        self.leader = leader                                    # Stores the player_id of the last leader (current leader if in SELECTION state)
-        self.player = player                                    # Current player/players in the state. -1 for a terminal state.  
-        self.state_name = state_name                            # Defines the current game state (SELECTION, VOTING, SABOTAGE or TERMINAL)
-        self.rnd = rnd       
-        self.missions_succeeded = missions_succeeded 
-        self.mission = mission                                
-        self.num_selection_fails = num_selection_fails          # Number of times a team has been rejected in the same round
-
-
-    def __repr__(self):
-        s = f'game state = {self.state_name} |' + \
-            f' current player/s = {self.player} |' + \
-            f' R/S/F = {self.rnd}/{self.missions_succeeded}/{self.rnd - self.missions_succeeded} |' 
-        return s
-
-    
-    def __eq__(self, other):
-        return  self.leader == other.leader and \
-                self.player == other.player and \
-                self.state_name == other.state_name and \
-                self.rnd == other.rnd and \
-                self.missions_succeeded == other.missions_succeeded and \
-                self.mission == other.mission and \
-                self.num_selection_fails == other.num_selection_fails
-
-
 '''
 A class to encapsulate information relevant to an action
 '''
@@ -73,7 +45,7 @@ class Action():
 A class used to define a perfect information representation of a game state in 
 Avalon Resistance, including methods to get all moves and apply moves.
 '''
-class ResistanceState(StateInfo):
+class ResistanceState():
     def __init__(self, determination, leader, player, state_name, rnd, 
         missions_succeeded, mission=[], num_selection_fails=0):
         self.leader = leader                                    # Stores the player_id of the last leader (current leader if in SELECTION state)
@@ -216,15 +188,16 @@ class ResistanceState(StateInfo):
 
     # Returns the reward for a player based on the current determination stored in the state
     def game_result(self, player):
+        num_fails = self.rnd - self.missions_succeeded
         if self.determination[player]:  # player is a spy
-            score = self.rnd - self.missions_succeeded  # number of fails
+            score = num_fails - self.missions_succeeded
         else:
-            score = self.missions_succeeded
-        if score < 3:
-            score = 0
-        return score / 3        # reward from [0, 1, 4/3 5/3] depending on number of wins
+            score = self.missions_succeeded - num_fails
+        return score    # rewards from [-5, -3, -1, 1, 3, 5]        
 
     
-    def get_state_info(self):
-        return StateInfo(self.leader, self.player, self.state_name, self.rnd,
-            self.missions_succeeded, self.mission, self.num_selection_fails)
+    def __repr__(self):
+        s = f'game state = {self.state_name} |' + \
+            f' current player/s = {self.player} |' + \
+            f' R/S/F = {self.rnd}/{self.missions_succeeded}/{self.rnd - self.missions_succeeded} |' 
+        return s
