@@ -2,7 +2,7 @@ import random
 import time
 from copy import deepcopy, copy
 from itertools import combinations
-from MCTS.state import StateNames, ResistanceState
+from MCTS.state import StateNames, ResistanceState, get_actions_time
 from MCTS.node import Node
 from agent import Agent
 
@@ -141,21 +141,29 @@ class Monte(Agent):
             state = ResistanceState(determination, self.leader, self.player, self.state_name, self.rnd,
                 self.missions_succeeded, self.mission, self.num_selection_fails)
 
+            temperature = min(0.7, (1 - (i + 1) / itermax))
+
+            t1 = time.time()
             # selection
             node = self.root_node
-            while state.get_moves() != [] and node.unexplored_actions(state.get_moves()) == []: 
-                node = node.ucb_selection(state.get_moves(), 0.7)
+            moves = state.get_moves()
+            while moves != [] and node.unexplored_actions(moves) == []: 
+                node = node.ucb_selection(moves, temperature)
                 state.make_move(node.action)
+                moves = state.get_moves()
+            t2 = time.time()
 
             # expansion
-            if state.get_moves() != []:    # if node is non-terminal
-                unexplored_actions = node.unexplored_actions(state.get_moves())
+            if moves != []:    # if node is non-terminal
+                unexplored_actions = node.unexplored_actions(moves)
                 action = random.choice(unexplored_actions)
                 state.make_move(action)
                 node = node.append_child(state.player, action)
+            t3 = time.time()
 
             # playout
             terminal_state = playout(state)
+            t4 = time.time()
             
             # backpropagation
             child = node.backpropagate(terminal_state)
@@ -171,8 +179,10 @@ class Monte(Agent):
 
 
 def playout(state):
-    while state.get_moves() != []:
-        state.make_move(random.choice(state.get_moves()))
+    moves = state.get_moves()
+    while moves != []:
+        state.make_move(random.choice(moves))
+        moves = state.get_moves()
     return state       
 
 
