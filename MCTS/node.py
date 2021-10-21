@@ -126,12 +126,13 @@ class SimultaneousMoveNode(Node):
 
         joint_action = []    
         for p, actions in self.player_actions.items():
-            ucb_eq = lambda a: a.reward / a.visits + exploration * sqrt(log(self.visits) / a.visits)
+            ucb_eq = lambda a: 0 if a.visits == 0 else \
+                a.reward / a.visits + exploration * sqrt(log(self.visits) / a.visits)
 
             selected_action = max(actions, key=ucb_eq)
             joint_action.append((p, selected_action.value))
 
-        joint_action, = [a for a in possible_actions if a.value == tuple(joint_action)]
+        joint_action, = [a for a in possible_actions if set(a.value) == set(joint_action)]
         
         node = self.children[joint_action]
         return node
