@@ -46,7 +46,7 @@ class StateInfo():
 A class to encapsulate information relevant to an action
 '''
 class Action():
-    def __init__(self, src_type, dst_type, player, value, partially_observable=False):
+    def __init__(self, src_type, dst_type, player, value):
         self.src_type = src_type
         self.dst_type = dst_type
         self.player = player
@@ -54,26 +54,6 @@ class Action():
         self.is_simultaneous = False
         if src_type == StateNames.SABOTAGE or src_type == StateNames.VOTING:
             self.is_simultaneous = True
-        self.partially_observable = partially_observable
-
-
-    def equivalent(self, other):
-        same_action_type = self.src_type == other.src_type and self.dst_type == other.dst_type
-
-        if same_action_type and self.src_type == StateNames.SABOTAGE:
-            if self.partially_observable == other.partially_observable:
-                return self.value == other.value
-            elif self.partially_observable:
-                spies_in_mission, sabotages = zip(*other.value)
-                return self.value[0] == sum(sabotages) and set(spies_in_mission) <= set(self.value[1])
-            elif other.partially_observable:
-                spies_in_mission, sabotages = zip(*self.value)
-                return other.value[0] == sum(sabotages) and set(spies_in_mission) <= set(other.value[1])
-            
-        elif same_action_type:
-            return self.player == other.player and self.value == other.value
-
-        return False
 
 
     def __hash__(self):
@@ -132,7 +112,7 @@ class ResistanceState(StateInfo):
         return actions
 
 
-    def generate_action(self, src_state, action_val, partially_observable=False):
+    def generate_action(self, src_state, action_val):
         rnd = self.rnd
         dst_state = None
         player = None
@@ -172,10 +152,8 @@ class ResistanceState(StateInfo):
         if rnd > 4:
             dst_state = StateNames.TERMINAL
             player = -1
-        
-        if partially_observable:
-            player = -1
-        return Action(src_state, dst_state, player, action_val, partially_observable)
+
+        return Action(src_state, dst_state, player, action_val)
 
 
     # Changes the game state object into a new state s' where s' = s(move)
@@ -222,11 +200,8 @@ class ResistanceState(StateInfo):
         elif action.src_type == StateNames.SABOTAGE:
             num_fails_required = Agent.fails_required[num_players][self.rnd]
             self.rnd += 1
-            if action.partially_observable:
-                num_sabotages = action.value[0]                 # Action has format (num_sabotages, list_of_players_in_mission)
-            else:
-                _, sabotages = zip(*action.value)               # Action has format [(s1, action1), (s2, action2), ...]
-                num_sabotages = sum(sabotages)
+            _, sabotages = zip(*action.value)               # Action has format [(spy1, action1), (spy2, action2), ...]
+            num_sabotages = sum(sabotages)
 
             if num_sabotages < num_fails_required:
                 self.missions_succeeded += 1

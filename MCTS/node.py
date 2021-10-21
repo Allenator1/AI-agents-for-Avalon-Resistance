@@ -1,10 +1,10 @@
 from math import sqrt, log
-import random
 from MCTS.state import StateNames
 
 
 class PlayerTree:
-    def __init__(self, root_node):
+    def __init__(self, player, state_info, parent=None, action=None):
+        root_node = Node(player, state_info, parent, action)
         self.root_node = root_node
         self.current_node = root_node
 
@@ -41,13 +41,10 @@ class Node:
         return node
 
 
-    def append_child(self, observer_is_spy, next_state, action):
+    def append_child(self, next_state, action):
         # does the next state produce partially observable moves in the perspective of the observer.
-        is_partial_observer = not observer_is_spy and next_state.state_name == StateNames.SABOTAGE
 
-        if is_partial_observer or next_state.state_name == StateNames.TERMINAL:
-            child_node = EnvironmentalNode(next_state.get_state_info(), self, action)
-        elif type(next_state.player) == tuple:
+        if type(next_state.player) == tuple:
             child_node = SimultaneousMoveNode(next_state.player, next_state.get_state_info(), self, action)
         else:
             child_node = Node(next_state.player, next_state.get_state_info(), self, action)
@@ -81,38 +78,29 @@ class Node:
             self.avails,
         )
 
-
-'''
-A class used to define nodes in the Monte Carlo tree, where there is no opportunity for any player to gain a reward. 
-This includes TERMINAL states and SABOTAGE states, in the perspective of a non-saboteur. Such nodes are 
-merely filler nodes to store information about successive and preceding nodes in a player tree.
-'''
-class EnvironmentalNode(Node):
-    def __init__(self, state_info, parent=None, action=None):
-        self.player = -1
-        self.state_info = state_info
-        self.parent = parent
-        self.action = action
-        self.reward = 0                                                          
-        self.visits = 0
-        self.avails = 0
-        self.determination_visits = {}
-        self.children = {}
-
-    def backpropagate(self, terminal_state, child_node=None):
-        d = terminal_state.determination
-        if d not in self.determination_visits:
-            self.determination_visits[d] = 0
-
-        self.determination_visits[terminal_state.determination] += 1
-        self.visits += 1
     
-    def __repr__(self):
-        return "Env node - [%s  V/A: %i/%i]" % (
-            self.action,
+    def __str__(self):
+        return "[%i/%i/%i]" % (
+            self.reward,
             self.visits,
             self.avails,
         )
+
+
+    def stringify_tree(self, indent):
+        """ Represent the tree as a string, for debugging purposes.
+        """
+        s = self.indent_string(indent) + str(self)
+        for c in self.children.values():
+            s += c.stringify_tree(indent + 1)
+        return s
+
+
+    def indent_string(self, indent):
+        s = "\n"
+        for i in range(1, indent + 1):
+            s += "| "
+        return s
 
 
 '''
@@ -156,7 +144,7 @@ class SimultaneousMoveNode(Node):
         return node
 
     
-    def append_child(self, observer_is_spy, next_state, joint_action):
+    def append_child(self, next_state, joint_action):
         for p, action in joint_action.value:
             if p not in self.player_actions:
                 self.player_actions[p] = []
@@ -164,12 +152,8 @@ class SimultaneousMoveNode(Node):
             if action not in explored_actions:
                 self.player_actions[p].append(ActionNode(parent=self, player=p, value=action))
 
-        # does the next state produce partially observable moves in the perspective of the observer.
-        is_partial_observer = not observer_is_spy and next_state.state_name == StateNames.SABOTAGE
 
-        if is_partial_observer or next_state.state_name == StateNames.TERMINAL:
-            child_node = EnvironmentalNode(next_state.get_state_info(), self, joint_action)
-        elif type(next_state.player) == tuple:
+        if type(next_state.player) == tuple:
             child_node = SimultaneousMoveNode(next_state.player, next_state.get_state_info(), self, joint_action)
         else:
             child_node = Node(next_state.player, next_state.get_state_info(), self, joint_action)
