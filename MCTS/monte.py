@@ -146,7 +146,7 @@ class Monte(Agent):
             node = self.root_node
             moves = state.get_moves()
             while moves != [] and node.unexplored_actions(moves) == []: 
-                node = node.ucb_selection(moves, temperature)
+                node = node.ucb_selection(moves, 0.7)
                 state.make_move(node.action)
                 moves = state.get_moves()
 
@@ -170,7 +170,7 @@ class Monte(Agent):
             
         print(self.root_node.stringify_tree(4))
         print(it)
-        return max(self.root_node.children.values(), key=lambda c: c.visits).action   
+        return max(self.root_node.children.values(), key=lambda c: c.visits)  
 
 
 def playout(state):
