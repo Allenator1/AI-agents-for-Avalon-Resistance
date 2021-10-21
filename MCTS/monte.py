@@ -1,13 +1,12 @@
 import random
 import time
-from copy import deepcopy, copy
 from itertools import combinations
-from MCTS.state import StateNames, ResistanceState, get_actions_time
+from MCTS.state import StateNames, ResistanceState
 from MCTS.node import Node
 from agent import Agent
 
 
-MAX_TIME = 0.35
+MAX_TIME = 0.350
 
 class Monte(Agent):
 
@@ -134,7 +133,9 @@ class Monte(Agent):
     def ISMCTS(self, max_time):
         start_time = time.time()
         time_diff = 0
+        it = 0
         while (time_diff < max_time):
+            it += 1
             # determinize
             determination = random.choice(self.determinations)
             state = ResistanceState(determination, self.leader, self.player, self.state_name, self.rnd,
@@ -168,6 +169,7 @@ class Monte(Agent):
             time_diff = time.time() - start_time
 
         print(self.root_node.stringify_tree(5, 2))
+        print(it)
         return max(self.root_node.children.values(), key=lambda c: c.visits) 
 
 
