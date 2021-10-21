@@ -2,8 +2,8 @@ import random
 import time
 from copy import deepcopy, copy
 from itertools import combinations
-from MCTS.state import StateNames, Roles, Action, StateInfo, ResistanceState
-from MCTS.node import Node, SimultaneousMoveNode, PlayerTree
+from MCTS.state import StateNames, ResistanceState
+from MCTS.node import Node
 from agent import Agent
 
 NUM_ITERATIONS = 1000
@@ -29,10 +29,8 @@ class Monte(Agent):
         self.mission=[]
         self.num_selection_fails=0
 
-        state_info = StateInfo(self.leader, self.player, self.state_name, self.rnd, self.missions_succeeded,
-            self.mission, self.num_selection_fails)
 
-        self.root_node = Node(self.player, state_info)
+        self.root_node = Node(self.num_players, self.player)
         t1 = time.time()
         selected_action = self.ISMCTS(NUM_ITERATIONS)
         print(time.time() - t1)
@@ -154,7 +152,7 @@ class Monte(Agent):
                 unexplored_actions = node.unexplored_actions(state.get_moves())
                 action = random.choice(unexplored_actions)
                 state.make_move(action)
-                node = node.append_child(state, action)
+                node = node.append_child(state.player, action)
 
             # playout
             terminal_state = playout(state)
