@@ -6,7 +6,7 @@ from MCTS.state import StateNames, ResistanceState
 from MCTS.node import Node
 from agent import Agent
 
-NUM_ITERATIONS = 1000
+MAX_TIME = 0.350
 
 class Monte(Agent):
 
@@ -31,10 +31,7 @@ class Monte(Agent):
 
 
         self.root_node = Node(self.player)
-        t1 = time.time()
-        selected_action = self.ISMCTS(NUM_ITERATIONS)
-        print(time.time() - t1)
-        print(selected_action)
+        selected_node = self.ISMCTS(MAX_TIME)
 
 
     def __str__(self):
@@ -133,9 +130,12 @@ class Monte(Agent):
         pass
 
 
-    def ISMCTS(self, itermax):
-        for i in range(itermax):
-            print(i)
+    def ISMCTS(self, max_time):
+        start_time = time.time()
+        time_diff = 0
+        it = 0
+        while (time_diff < max_time):
+            it += 1
             # determinize
             determination = random.choice(self.determinations)
             state = ResistanceState(determination, self.leader, self.player, self.state_name, self.rnd,
@@ -163,8 +163,10 @@ class Monte(Agent):
                 node = node.parent
                 child = node.backpropagate(terminal_state, child)
             
-        
+            time_diff = time.time() - start_time
+            
         print(self.root_node.stringify_tree(4))
+        print(it)
         return max(self.root_node.children.values(), key=lambda c: c.visits).action   
 
 

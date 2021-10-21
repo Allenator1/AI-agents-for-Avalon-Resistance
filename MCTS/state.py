@@ -193,7 +193,7 @@ class ResistanceState():
             score = num_fails - self.missions_succeeded
         else:
             score = self.missions_succeeded - num_fails
-        return score    # rewards from [-5, -3, -1, 1, 3, 5]        
+        return score / 2    # rewards from [-2.5, -1.5, -0.5, 0.5, 1.5, 2.5]        
 
     
     def __repr__(self):
