@@ -1,13 +1,12 @@
 import random
 import time
 from itertools import combinations
-from MCTS.state import StateNames, ResistanceState
+from MCTS.state import StateNames, ResistanceState, MISSION_SIZES, FAILS_REQUIRED, SPY_COUNT
 from MCTS.node import Node, SimultaneousMoveNode
-from agent import Agent
 
 MAX_TIME = 0.350
 
-class Monte(Agent):
+class Monte():
 
     def __init__(self, name):
         '''
@@ -138,9 +137,11 @@ class Monte(Agent):
         and mission_success is True if there were not enough betrayals to cause the mission to fail, False otherwise.
         It iss not expected or required for this function to return anything.
         '''
-        if num_fails < Agent.fails_required[self.num_players][self.rnd]:
+        if num_fails < FAILS_REQUIRED[self.num_players][self.rnd]:
             self.missions_succeeded += 1 
         self.rnd += 1 
+        if not self.is_spy:
+            self.remove_illegal_worlds(num_fails, mission)
 
 
     def round_outcome(self, rounds_complete, missions_failed):
@@ -205,6 +206,15 @@ class Monte(Agent):
         return max(self.root_node.children.values(), key=lambda c: c.visits)  
 
 
+    def remove_illegal_worlds(self, num_sabotages, mission):
+        for d in self.determinations:
+            num_players = len(d)
+            spies = [p for p in range(num_players) if d[p]]
+            spies_in_mission = [s for s in spies if s in mission]
+            if num_sabotages > len(spies_in_mission):
+                self.determinations.remove(d)
+
+
 def playout(state):
     moves = state.get_moves()
     while moves != []:
@@ -214,7 +224,7 @@ def playout(state):
 
 
 def initialise_determinations(player, num_players):
-    num_spies = Agent.spy_count[num_players]
+    num_spies = SPY_COUNT[num_players]
     possible_spies = filter(lambda p: p != player, range(num_players))
     spy_configurations = list(combinations(possible_spies, num_spies))
     determinations = []

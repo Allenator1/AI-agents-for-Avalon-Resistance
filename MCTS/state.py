@@ -1,5 +1,25 @@
-from agent import Agent
 from itertools import combinations, product
+
+
+MISSION_SIZES = {
+    5:[2,3,2,3,3], \
+    6:[3,3,3,3,3], \
+    7:[2,3,3,4,5], \
+    8:[3,4,4,5,5], \
+    9:[3,4,4,5,5], \
+    10:[3,4,4,5,5]
+}
+
+SPY_COUNT = {5:2, 6:2, 7:3, 8:3, 9:3, 10:4}
+
+FAILS_REQUIRED = {
+    5:[1,1,1,1,1], \
+    6:[1,1,1,1,1], \
+    7:[1,1,1,2,1], \
+    8:[1,1,1,2,1], \
+    9:[1,1,1,2,1], \
+    10:[1,1,1,2,1]
+}
 
 
 class Roles():
@@ -64,7 +84,7 @@ class ResistanceState():
         num_players = len(self.determination)
 
         if self.state_name == StateNames.SELECTION:
-            mission_size = Agent.mission_sizes[num_players][self.rnd]
+            mission_size = MISSION_SIZES[num_players][self.rnd]
             possible_missions = combinations(range(num_players), mission_size) 
             action_vals = [tuple(mission) for mission in possible_missions]
             actions = [self.generate_action(StateNames.SELECTION, val) for val in action_vals]
@@ -170,7 +190,7 @@ class ResistanceState():
                 self.rnd += 1
 
         elif action.src_type == StateNames.SABOTAGE:
-            num_fails_required = Agent.fails_required[num_players][self.rnd]
+            num_fails_required = FAILS_REQUIRED[num_players][self.rnd]
             self.rnd += 1
             _, sabotages = zip(*action.value)               # Action has format [(spy1, action1), (spy2, action2), ...]
             num_sabotages = sum(sabotages)
