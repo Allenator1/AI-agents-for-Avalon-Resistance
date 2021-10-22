@@ -1,22 +1,19 @@
 from tqdm import tqdm
 from random_agent import RandomAgent
-from high_bfactor_with_annealing import Monte as Hbwa
-from high_bfactor_no_annealing import Monte as Hbna
-from low_bfactor_with_annealing import Monte as Lbwa
-from low_bfactor_no_annealing import Monte as Lbna
+from mcts.monte import Monte
+from decision_tree.decision_tree_agent import DecisionTreeAgent
 from game import Game
 
-agents = [Hbwa('hbwa'), 
-        Hbna('hbna'),  
-        Lbwa('lbwa'),  
-        Lbna('lbna'),  
-        RandomAgent(name='r5'),  
-        RandomAgent(name='r6'),  
-        RandomAgent(name='r7')]
+agents =        [Monte('monte'),   
+                DecisionTreeAgent('tree0'),  
+                DecisionTreeAgent('tree1'),  
+                DecisionTreeAgent('tree2'),  
+                RandomAgent(name='r1'),
+                RandomAgent(name='r2')]
 
 tournament_stats = [{'spy_wins':0, 'spy_games':0, 'resistance_wins':0, 'resistance_games':0} for _ in range(len(agents))]
 
-total_rounds = 500
+total_rounds = 5
 game_as_resistance = 0
 game_as_spy = 0
 for i in tqdm(range(total_rounds)):
