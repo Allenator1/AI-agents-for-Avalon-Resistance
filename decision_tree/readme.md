@@ -1,7 +1,7 @@
 # Decision tree agent
 ## Structure
 ```
-decision_tree_agent.py                   ---gamplay---
+decision_tree_agent.py                   ---gamplay(require model.py and tree.py)---
 myagent.py                               ---training---
 model.py                                 ---state---
 train.py                                 ---training---          
@@ -130,8 +130,15 @@ test.py                                  ---test_against_random---
     - Runs finite iterations of check converge and calculates the average converge rate
     - returns the best tree encountered in all iterations
 
+//
 **test.py**
 - Evaluate the effectiveness of the decision tree agent
 - Plays *total round* number of games with 6 intervals
 - Each interval the proportion of decision tree vs random agent changes
 - Final winrate data will be displayed
+
+//
+**decision_tree_agent.py**
+- Agent class that impliments a trained decision tree
+- Used for tournamnet play 
+- requires tree.py and model.py as dependencies
