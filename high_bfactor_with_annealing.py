@@ -1,6 +1,6 @@
 import random
 import time
-from itertools import combinations
+from itertools import combinations, product
 
 
 MAX_TIME = 0.350
