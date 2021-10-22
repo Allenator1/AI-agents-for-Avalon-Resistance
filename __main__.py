@@ -16,7 +16,6 @@ agents = [Hbwa('hbwa'),
 
 tournament_stats = [{'spy_wins':0, 'spy_games':0, 'resistance_wins':0, 'resistance_games':0} for _ in range(len(agents))]
 
-
 total_rounds = 500
 game_as_resistance = 0
 game_as_spy = 0
