@@ -29,13 +29,6 @@ for i in range(6):
     while i < len(agname):
         agents.append(RandomAgent(name=agname[i]))
         i+=1
-    # agents = [DecisionTreeAgent(name='alpha'), 
-    #         RandomAgent(name='beta'),  
-    #         RandomAgent(name='gamma'),  
-    #         RandomAgent(name='delta'),  
-    #         RandomAgent(name='epslion'),  
-    #         RandomAgent(name='zeta'),  
-    #         RandomAgent(name='eta')]
 
     spy_rounds_won = 0
     resistance_round_won = 0
@@ -45,7 +38,6 @@ for i in range(6):
     for i in range(total_rounds):
         game = Game(agents)
         game.play()
-        #print(game)
         agents = game.agents
         spies = game.spies
         id = None

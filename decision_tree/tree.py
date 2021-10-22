@@ -1,7 +1,5 @@
 import json
 import random
-
-from numpy.lib.function_base import select
 from model import States
 import numpy as np
 import pprint
