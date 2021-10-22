@@ -1,7 +1,7 @@
 # Decision tree agent
 ## Structure
 ```
-decision_tree_agent.py                   ---gamplay(require model.py and tree.py)---
+decision_tree_agent.py                   ---gamplay---
 myagent.py                               ---training---
 model.py                                 ---state---
 train.py                                 ---training---          
@@ -14,8 +14,6 @@ test.py                                  ---test_against_random---
 > $ python3 train.py 
 
 2. Tournament play
-> require tree.py model.py decision_tree_agent.py in the same directory 
-
 > from decision_tree_agent import DecisionTreeAgent
 
 3. Perform test with random agents
@@ -141,4 +139,3 @@ test.py                                  ---test_against_random---
 **decision_tree_agent.py**
 - Agent class that impliments a trained decision tree
 - Used for tournamnet play 
-- requires tree.py and model.py as dependencies
