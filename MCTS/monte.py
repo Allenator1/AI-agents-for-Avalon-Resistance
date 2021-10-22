@@ -2,7 +2,7 @@ import random
 import time
 from itertools import combinations
 from MCTS.state import StateNames, ResistanceState
-from MCTS.node import Node
+from MCTS.node import Node, SimultaneousMoveNode
 from agent import Agent
 
 
@@ -18,27 +18,12 @@ class Monte(Agent):
         The agent will persist between games to allow for long-term learning etc.
         '''
         self.name = name
-        self.player = 0
-        self.num_players = 5
-        self.determinations, self.probabilities = initialise_determinations(self.player, self.num_players)
-
-        self.leader = self.player
-        self.state_name=StateNames.SELECTION
-        self.rnd=0
-        self.missions_succeeded=0
-        self.mission=[]
-        self.num_selection_fails=0
-
-
-        self.root_node = Node(self.player)
-        selected_node = self.ISMCTS(MAX_TIME)
-
 
     def __str__(self):
         '''
         Returns a string represnetation of the agent
         '''
-        return 'Agent '+self.name
+        return 'Agent ' + self.name
 
 
     def __repr__(self):
@@ -56,7 +41,22 @@ class Monte(Agent):
         and a list of agent indexes, which is the set of spies if this agent is a spy,
         or an empty list if this agent is not a spy.
         '''
-        pass
+        self.spies = spies
+        self.is_spy = False if spies == [] else True
+        
+        self.player = player_number
+        self.num_players = number_of_players
+        if self.is_spy:
+            d = tuple([True if p in spies else False for p in range(number_of_players)])
+            self.determinations = [d]
+            self.probabilities = [1.0]
+        else:
+            self.determinations, self.probabilities = initialise_determinations(self.player, self.num_players)
+
+        self.rnd = 0
+        self.missions_succeeded = 0
+        self.mission = []
+        self.num_selection_fails = 0
 
 
     def propose_mission(self, team_size, fails_required = 1):
@@ -65,7 +65,14 @@ class Monte(Agent):
         to be returned. 
         fails_required are the number of fails required for the mission to fail.
         '''
-        pass 
+        self.leader = self.player
+        self.state_name = StateNames.SELECTION
+
+        self.root_node = Node(self.player)
+
+        selected_node = self.ISMCTS(MAX_TIME, self.player)
+        mission = list(selected_node.action.value)
+        return mission
 
 
     def vote(self, mission, proposer):
@@ -75,7 +82,16 @@ class Monte(Agent):
         proposer is an int between 0 and number_of_players and is the index of the player who proposed the mission.
         The function should return True if the vote is for the mission, and False if the vote is against the mission.
         '''
-        pass
+        self.leader = proposer
+        self.state_name = StateNames.VOTING
+        self.mission = mission
+
+        self.root_node = SimultaneousMoveNode(range(self.num_players))
+
+        self.ISMCTS(MAX_TIME, range(self.num_players))
+        self_action = max(self.root_node.player_actions[self.player], 
+            key=lambda a: a.visits).value
+        return self_action
 
 
     def vote_outcome(self, mission, proposer, votes):
@@ -86,7 +102,11 @@ class Monte(Agent):
         votes is a dictionary mapping player indexes to Booleans (True if they voted for the mission, False otherwise).
         No return value is required or expected.
         '''
-        pass
+        num_votes_for = sum(votes)
+        if num_votes_for * 2 < self.num_players:
+            self.num_selection_fails += 1
+        else:
+            self.num_selection_fails = 0
 
 
     def betray(self, mission, proposer):
@@ -97,7 +117,17 @@ class Monte(Agent):
         The method should return True if this agent chooses to betray the mission, and False otherwise. 
         Only spies are permitted to betray the mission. 
         '''
-        pass
+        self.leader = proposer
+        self.state_name = StateNames.SABOTAGE
+        self.mission = mission
+        spies_in_mission = tuple([s for s in self.spies if s in self.mission])
+
+        self.root_node = SimultaneousMoveNode(spies_in_mission)
+
+        self.ISMCTS(MAX_TIME, spies_in_mission)
+        self_action = max(self.root_node.player_actions[self.player], 
+            key=lambda a: a.visits).value
+        return self_action
 
 
     def mission_outcome(self, mission, proposer, num_fails, mission_success):
@@ -109,7 +139,11 @@ class Monte(Agent):
         and mission_success is True if there were not enough betrayals to cause the mission to fail, False otherwise.
         It iss not expected or required for this function to return anything.
         '''
-        pass
+        if num_fails < Agent.fails_required[self.num_players][self.rnd]:
+            self.missions_succeeded += 1 
+        self.rnd += 1
+        if not self.is_spy:
+            self.remove_illegal_worlds(num_fails, mission)
 
 
     def round_outcome(self, rounds_complete, missions_failed):
@@ -118,7 +152,9 @@ class Monte(Agent):
         rounds_complete, the number of rounds (0-5) that have been completed
         missions_failed, the numbe of missions (0-3) that have failed.
         '''
-        pass
+        self.rnd = rounds_complete
+        self.missions_succeeded = rounds_complete - missions_failed
+        self.num_selection_fails = 0
     
 
     def game_outcome(self, spies_win, spies):
@@ -130,15 +166,15 @@ class Monte(Agent):
         pass
 
 
-    def ISMCTS(self, max_time):
+    def ISMCTS(self, max_time, current_player):
         start_time = time.time()
         time_diff = 0
         it = 0
         while (time_diff < max_time):
             it += 1
             # determinize
-            determination = random.choice(self.determinations)
-            state = ResistanceState(determination, self.leader, self.player, self.state_name, self.rnd,
+            determination = random.choices(self.determinations, self.probabilities)[0]
+            state = ResistanceState(determination, self.leader, current_player, self.state_name, self.rnd,
                 self.missions_succeeded, self.mission, self.num_selection_fails)
 
             temperature = min(0.9, (1 - time_diff / max_time))
@@ -168,9 +204,18 @@ class Monte(Agent):
                 child = node.backpropagate(terminal_state, child)
             time_diff = time.time() - start_time
 
-        print(self.root_node.stringify_tree(5, 2))
-        print(it)
         return max(self.root_node.children.values(), key=lambda c: c.visits) 
+
+
+    def remove_illegal_worlds(self, num_sabotages, mission):
+        for i in range(len(self.determinations)):
+            d = self.determinations[i]
+            num_players = len(d)
+            spies = [p for p in range(num_players) if d[p]]
+            spies_in_mission = [s for s in spies if s in mission]
+            if num_sabotages > len(spies_in_mission):
+                self.probabilities[i] = 0
+            normalise_probabilities(self.probabilities)
 
 
 def playout(state):
@@ -193,25 +238,9 @@ def initialise_determinations(player, num_players):
         determinations.append(d)
         probabilities.append(p)
     return determinations, probabilities
+        
 
-
-# updates determination probabilities after observing (s, a) => v according to the assumption that
-# P(d | a) = visits(v, d) / visits(v)
-def particle_filter_inference(node_u, node_v, action, determinations, probabilities, itermax):  
-    w = node_u.visits / itermax
-    for i in range(len(determinations)):
-        d = determinations[i]
-        if not legal_action(d, action):
-            probabilities[i] = 0
-            normalise_probabilities(determinations)
-        else:
-            probabilities[i] = (1 - w) * probabilities[i] + w * node_v.determination_visits[d] / node_v.visits 
-
-
-def legal_action(determination):
-    pass
-
-def normalise_probabilities(determinations):
-    pass
-
-m = Monte('monte')
+def normalise_probabilities(probabilities):
+    n_legal_determinations = [p for p in probabilities if p != 0]
+    for i in range(len(probabilities)):
+        if probabilities[i] != 0: probabilities[i] = 1 / len(n_legal_determinations)
