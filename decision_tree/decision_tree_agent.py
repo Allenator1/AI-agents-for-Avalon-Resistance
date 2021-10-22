@@ -1,3 +1,9 @@
+import os
+import sys
+
+currentdir = os.path.dirname(os.path.realpath(__file__))
+sys.path.append(currentdir)
+
 from typing import Tuple
 from agent import Agent
 import random
@@ -5,7 +11,6 @@ import numpy as np
 from model import States
 from tree import Tree
 import json
-import os
 import pprint
 
 

@@ -163,7 +163,7 @@ class Monte():
         pass
 
 
-    def ISMCTS(self, max_time, current_player):
+    def ISMCTS(self, max_time, current_player, use_simulated_annealing=False):
         start_time = time.time()
         time_diff = 0
         it = 0
@@ -175,12 +175,13 @@ class Monte():
                 self.missions_succeeded, self.mission, self.num_selection_fails)
 
             temperature = min(0.8, (1 - time_diff / max_time))
+            exploration = temperature if use_simulated_annealing else 0.7
 
             # selection
             node = self.root_node
             moves = state.get_moves()
             while moves != [] and node.unexplored_actions(moves) == []: 
-                node = node.ucb_selection(moves, temperature)
+                node = node.ucb_selection(moves, exploration)
                 state.make_move(node.action)
                 moves = state.get_moves()
 
