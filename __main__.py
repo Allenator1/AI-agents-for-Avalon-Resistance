@@ -1,7 +1,8 @@
 from random_agent import RandomAgent
+from MCTS.monte import Monte
 from game import Game
 
-agents = [RandomAgent(name='r1'), 
+agents = [Monte(name='monte'), 
         RandomAgent(name='r2'),  
         RandomAgent(name='r3'),  
         RandomAgent(name='r4'),  
@@ -9,8 +10,9 @@ agents = [RandomAgent(name='r1'),
         RandomAgent(name='r6'),  
         RandomAgent(name='r7')]
 
-game = Game(agents)
-game.play()
-print(game)
+while True:
+        game = Game(agents)
+        game.play()
+        print(game)
 
 
