@@ -1,14 +1,13 @@
 import random
 import time
 from itertools import combinations
-from MCTS.state import StateNames, ResistanceState
+from MCTS.state import StateNames, ResistanceState, FAILS_REQUIRED, SPY_COUNT
 from MCTS.node import Node, SimultaneousMoveNode
-from agent import Agent
 
 
 MAX_TIME = 0.350
 
-class Monte(Agent):
+class Monte():
 
     def __init__(self, name):
         '''
@@ -139,7 +138,7 @@ class Monte(Agent):
         and mission_success is True if there were not enough betrayals to cause the mission to fail, False otherwise.
         It iss not expected or required for this function to return anything.
         '''
-        if num_fails < Agent.fails_required[self.num_players][self.rnd]:
+        if num_fails < FAILS_REQUIRED[self.num_players][self.rnd]:
             self.missions_succeeded += 1 
         self.rnd += 1
         if not self.is_spy:
@@ -227,7 +226,7 @@ def playout(state):
 
 
 def initialise_determinations(player, num_players):
-    num_spies = Agent.spy_count[num_players]
+    num_spies = SPY_COUNT[num_players]
     possible_spies = filter(lambda p: p != player, range(num_players))
     spy_configurations = list(combinations(possible_spies, num_spies))
     determinations = []
