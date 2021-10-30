@@ -430,17 +430,10 @@ class ResistanceState():
      # Returns the reward for a player based on the current determination stored in the state
     def game_result(self, player):
         num_fails = self.rnd - self.missions_succeeded
-        spys_won = num_fails >= 3
-        if spys_won:  
-            if self.determination[player]:
-                score = 1
-            else:
-                score = -1
+        if self.determination[player]:  # player is a spy
+            score = num_fails - self.missions_succeeded
         else:
-            if self.determination[player]:
-                score = -1
-            else:
-                score = 1
+            score = self.missions_succeeded - num_fails
         return score         
 
     
