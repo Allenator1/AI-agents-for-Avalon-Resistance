@@ -1,11 +1,12 @@
 import random
 import time
+from agent import Agent
 from itertools import combinations
 
 
-MAX_TIME = 0.350
+MAX_TIME = 0.35
 
-class Monte():
+class Monte(Agent):
 
     def __init__(self, name):
         '''
@@ -136,7 +137,7 @@ class Monte():
         and mission_success is True if there were not enough betrayals to cause the mission to fail, False otherwise.
         It iss not expected or required for this function to return anything.
         '''
-        if num_fails < FAILS_REQUIRED[self.num_players][self.rnd]:
+        if num_fails < Agent.fails_required[self.num_players][self.rnd]:
             self.missions_succeeded += 1 
         self.rnd += 1
         if not self.is_spy:
@@ -225,7 +226,7 @@ def playout(state):
 
 
 def initialise_determinations(player, num_players):
-    num_spies = SPY_COUNT[num_players]
+    num_spies = Agent.spy_count[num_players]
     possible_spies = filter(lambda p: p != player, range(num_players))
     spy_configurations = list(combinations(possible_spies, num_spies))
     determinations = []
@@ -248,26 +249,6 @@ def normalise_probabilities(probabilities):
 # CLASSES TO DEFINE GAME STATE--------------------------------------------------------------------------
 
 
-
-MISSION_SIZES = {
-    5:[2,3,2,3,3], \
-    6:[3,3,3,3,3], \
-    7:[2,3,3,4,5], \
-    8:[3,4,4,5,5], \
-    9:[3,4,4,5,5], \
-    10:[3,4,4,5,5]
-}
-
-FAILS_REQUIRED = {
-    5:[1,1,1,1,1], \
-    6:[1,1,1,1,1], \
-    7:[1,1,1,2,1], \
-    8:[1,1,1,2,1], \
-    9:[1,1,1,2,1], \
-    10:[1,1,1,2,1]
-}
-
-SPY_COUNT = {5:2, 6:2, 7:3, 8:3, 9:3, 10:4}
 
 class Roles():
     SPY = 'SPY'
@@ -331,7 +312,7 @@ class ResistanceState():
         num_players = len(self.determination)
 
         if self.state_name == StateNames.SELECTION:
-            mission_size = MISSION_SIZES[num_players][self.rnd]
+            mission_size = Agent.mission_sizes[num_players][self.rnd]
             possible_missions = combinations(range(num_players), mission_size) 
             action_vals = [tuple(mission) for mission in possible_missions]
             actions = [self.generate_action(StateNames.SELECTION, val) for val in action_vals]
@@ -431,7 +412,7 @@ class ResistanceState():
                 self.rnd += 1
 
         elif action.src_type == StateNames.SABOTAGE:
-            num_fails_required = FAILS_REQUIRED[num_players][self.rnd]
+            num_fails_required = Agent.fails_required[num_players][self.rnd]
             self.rnd += 1
             num_sabotages = action.value
 
@@ -446,14 +427,21 @@ class ResistanceState():
             self.state_name = StateNames.TERMINAL
 
 
-    # Returns the reward for a player based on the current determination stored in the state
+     # Returns the reward for a player based on the current determination stored in the state
     def game_result(self, player):
         num_fails = self.rnd - self.missions_succeeded
-        if self.determination[player]:  # player is a spy
-            score = num_fails - self.missions_succeeded
+        spys_won = num_fails >= 3
+        if spys_won:  
+            if self.determination[player]:
+                score = 1
+            else:
+                score = -1
         else:
-            score = self.missions_succeeded - num_fails
-        return score / 2    # rewards from [-2.5, -1.5, -0.5, 0.5, 1.5, 2.5]        
+            if self.determination[player]:
+                score = -1
+            else:
+                score = 1
+        return score         
 
     
     def __repr__(self):
